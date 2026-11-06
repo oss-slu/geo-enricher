@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 //import * as cptable from 'xlsx/dist/cpexcel.full.mjs';
-import { DATA_SOURCE_OPTIONS, type DataSource } from '../consts';
+import { type DataSource } from '../consts';
 
 const API_BASE_URL = '/api';
 
@@ -21,7 +21,7 @@ type PreviewData = {
 const PREVIEW_LIMIT = 5;
 
 function DatasetGeoJoiner() {
-    const [dataSource, setDataSource] = useState<DataSource>('File Upload');
+    const [dataSource] = useState<DataSource>('File Upload');
     const [sessionId, setSessionId] = useState('');
     const [tempPath, setTempPath] = useState('');
     const [filename, setFilename] = useState('');
