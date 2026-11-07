@@ -105,6 +105,50 @@ describe('findAddressFields', () => {
         expect(findAddressFields(filePath)).toEqual(['address']);
     });
 
+it('finds address fields in UTF-16LE CSV files', () => {
+    const filePath = path.join(tempDir, 'addresses-utf16le.csv');
+    const csv = [
+        'name,address',
+        'Darcy,"6957 Chippewa St, Saint Louis, MO 63109"',
+    ].join('\n');
+
+    const buffer = Buffer.concat([
+        Buffer.from([0xff, 0xfe]),
+        Buffer.from(csv, 'utf16le'),
+    ]);
+
+    fs.writeFileSync(filePath, buffer);
+
+    expect(findAddressFields(filePath)).toEqual(['address']);
+});
+
+it('finds address fields in UTF-16BE CSV files', () => {
+    const filePath = path.join(tempDir, 'addresses-utf16be.csv');
+    const csv = [
+        'name,address',
+        'Darcy,"6957 Chippewa St, Saint Louis, MO 63109"',
+    ].join('\n');
+
+    const littleEndian = Buffer.from(csv, 'utf16le');
+    const bigEndian = Buffer.from(littleEndian);
+
+    for (let i = 0; i < bigEndian.length; i += 2) {
+        const first = bigEndian[i];
+        bigEndian[i] = bigEndian[i + 1];
+        bigEndian[i + 1] = first;
+    }
+
+    const buffer = Buffer.concat([
+        Buffer.from([0xfe, 0xff]),
+        bigEndian,
+    ]);
+
+    fs.writeFileSync(filePath, buffer);
+
+    expect(findAddressFields(filePath)).toEqual(['address']);
+});
+
+
     it('returns no matches for an empty file', () => {
         const filePath = path.join(tempDir, 'empty.csv');
 

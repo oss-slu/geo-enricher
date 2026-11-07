@@ -3,7 +3,7 @@ import { VITE_ORIGIN } from './consts';
 import { closeDB, connectDB } from './db/connect';
 import { cleanupExpiredSessions } from './utils/storage';
 
-const PORT = 9876;
+const PORT = 9877;
 
 async function main() {
     const app = createApp(VITE_ORIGIN);

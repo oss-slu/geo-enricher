@@ -8,7 +8,7 @@ describe('DatasetGeoJoiner', () => {
     });
 
     it('renders the data source and file upload controls', () => {
-        render(<DatasetGeoJoiner />);
+        render(<DatasetGeoJoiner selectedAcsColumns={[]}/>);
 
         expect(
             screen.getByRole('heading', { name: 'Upload a file' }),
@@ -22,7 +22,7 @@ describe('DatasetGeoJoiner', () => {
     });
 
     it('rejects unsupported file types', async () => {
-        render(<DatasetGeoJoiner />);
+        render(<DatasetGeoJoiner selectedAcsColumns={[]}/>);
 
         const file = new File(['not a spreadsheet'], 'notes.txt', {
             type: 'text/plain',
@@ -45,7 +45,7 @@ describe('DatasetGeoJoiner', () => {
             }),
         );
 
-        render(<DatasetGeoJoiner />);
+        render(<DatasetGeoJoiner selectedAcsColumns={[]}/>);
 
         const file = new File(
             ['Address,City\n123 Main Street,St. Louis'],
@@ -85,7 +85,7 @@ describe('DatasetGeoJoiner', () => {
                 }),
             );
 
-        render(<DatasetGeoJoiner />);
+        render(<DatasetGeoJoiner selectedAcsColumns={[]}/>);
 
         const file = new File(
             [
@@ -143,7 +143,7 @@ describe('DatasetGeoJoiner', () => {
                 }),
             );
 
-        render(<DatasetGeoJoiner />);
+        render(<DatasetGeoJoiner selectedAcsColumns={[]}/>);
 
         const rows = [
             'Address,City',

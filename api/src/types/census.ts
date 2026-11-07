@@ -9,7 +9,13 @@ export type censusBlock = {
 
 export type censusAddress = {
     matchedAddress: string;
-    coordinates: { x: number; y: number }; // x = lon, y = lat
+    coordinates: { x: number; y: number };
+    addressComponents: {
+        city: string;
+        state: string;
+        zip: string;
+        streetName?: string;
+    };
     geographies: {
         'Census Block Groups'?: censusBlock[];
     };

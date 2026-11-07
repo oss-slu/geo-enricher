@@ -192,6 +192,12 @@ describe('validateAddress', () => {
                             matchedAddress:
                                 '6957 Chippewa St, Saint Louis, MO 63109',
                             coordinates: { x: -90, y: 38 },
+                            addressComponents: {
+                                city: 'SAINT LOUIS',
+                                state: 'MO',
+                                zip: '63109',
+                                streetName: 'CHIPPEWA',
+                            },
                             geographies: {
                                 'Census Block Groups': [
                                     {

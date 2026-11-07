@@ -24,6 +24,7 @@ const { enrichFile } = await import('../../utils/enrichFile');
 const app = createApp();
 const addr = '123 Main St, Saint Louis, MO 63103';
 const noMatch = '456 Other St, Saint Louis, MO 63103';
+
 const response: censusGeocodeResp = {
     result: {
         input: { address: { address: addr } },
@@ -31,6 +32,12 @@ const response: censusGeocodeResp = {
             {
                 matchedAddress: 'STANDARDIZED',
                 coordinates: { x: -90, y: 38 },
+                addressComponents: {
+                    city: 'SAINT LOUIS',
+                    state: 'MO',
+                    zip: '63103',
+                    streetName: 'MAIN',
+                },
                 geographies: {
                     'Census Block Groups': [
                         {
@@ -47,6 +54,7 @@ const response: censusGeocodeResp = {
         ],
     },
 };
+
 const table: Dataset = {
     columns: [
         { id: 'a', label: 'identifier' },
@@ -586,4 +594,56 @@ it('treats a Census match without block-group data as unmatched', async () => {
         matched: 0,
         unmatched: 3,
     });
+});
+
+it('downloads an enriched CSV file', async () => {
+    const input = await upload();
+    const enriched = await geocode(input);
+
+    expect(enriched.status).toBe(201);
+
+    const downloaded = await request(app)
+        .get('/download-file')
+        .query({
+            sessionId: enriched.body.sessionId,
+            filename: enriched.body.filename,
+        });
+
+    expect(downloaded.status).toBe(200);
+    expect(downloaded.headers['content-type']).toMatch(/text\/csv/);
+    expect(downloaded.headers['content-disposition']).toContain(
+        'attachment;',
+    );
+
+    const expected = await fs.readFile(enriched.body.tempPath);
+    expect(downloaded.text).toBe(expected.toString('utf8'));
+});
+
+it('rejects a download with an invalid filename', async () => {
+    const res = await request(app)
+        .get('/download-file')
+        .query({
+            sessionId: randomUUID(),
+            filename: '../secret.csv',
+        });
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+});
+
+it('does not allow downloading a file from another session', async () => {
+    const input = await upload();
+    const enriched = await geocode(input);
+
+    expect(enriched.status).toBe(201);
+
+    const res = await request(app)
+        .get('/download-file')
+        .query({
+            sessionId: randomUUID(),
+            filename: enriched.body.filename,
+        });
+
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
 });

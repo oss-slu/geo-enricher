@@ -13,7 +13,20 @@ type MetadataResponse = {
     message?: string;
 };
 
-function AcsColumnSelector({ table_ids }: { table_ids: string[] }) {
+type SelectedAcsColumn = {
+    table_id: string;
+    column_id: string;
+};
+
+type AcsColumnSelectorProps = {
+    table_ids: string[];
+    onSelectionChange: (columns: SelectedAcsColumn[]) => void;
+};
+
+function AcsColumnSelector({
+    table_ids,
+    onSelectionChange,
+}: AcsColumnSelectorProps) {
     const [metadata, setMetadata] = useState<MetadataRow[]>([]);
     const [expandedTables, setExpandedTables] = useState<Set<string>>(
         new Set(),
@@ -92,21 +105,45 @@ function AcsColumnSelector({ table_ids }: { table_ids: string[] }) {
             } else {
                 next.add(columnId);
             }
+            const selected = metadata
+                .filter((row) => next.has(row.column_id))
+                .map((row) => ({
+                    table_id: row.table_id,
+                    column_id: row.column_id,
+                }));
 
+            onSelectionChange(selected);
             return next;
         });
     }
 
+
     function clearColumns(tableId?: string) {
-        if (tableId) {
-            setSelectedColumns((current) => {
-                const next = new Set(current);
-                metadata.filter((row) => row.table_id === tableId).forEach((row) => next.delete(row.column_id));
-                return next;
-            })
-        } else {
-            setSelectedColumns(new Set());
-        }
+        setSelectedColumns((current) => {
+            const next = tableId
+                ? new Set(
+                    [...current].filter(
+                        (columnId) =>
+                            !metadata.some(
+                                (row) =>
+                                    row.table_id === tableId &&
+                                    row.column_id === columnId,
+                            ),
+                        ),
+                )
+                : new Set<string>();
+
+            const selected = metadata
+                .filter((row) => next.has(row.column_id))
+                .map((row) => ({
+                    table_id: row.table_id,
+                    column_id: row.column_id,
+                }));
+
+            onSelectionChange(selected);
+
+            return next;
+        });
     }
 
     const tables = Array.from(

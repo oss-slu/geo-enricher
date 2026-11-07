@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 //import * as cptable from 'xlsx/dist/cpexcel.full.mjs';
-import { DATA_SOURCE_OPTIONS, type DataSource } from '../consts';
+import type { DataSource } from '../consts';
 
 const API_BASE_URL = '/api';
 
@@ -12,16 +12,50 @@ type UploadResponse = {
     tempPath: string;
 };
 
+type EnrichResponse = {
+    success: boolean;
+    sessionId: string;
+    filename: string;
+    tempPath: string;
+    format: string;
+    columnMapping: {
+        id: string;
+        output: string;
+    }[];
+    addressField: string;
+    geocodeMapping: {
+        field: string;
+        output: string;
+    }[];
+    counts: {
+        input: number;
+        output: number;
+        matched: number;
+        invalidOrBlank: number;
+        unmatched: number;
+    };
+    error?: string;
+};
+
 type CellValue = string | number | boolean | null;
 type PreviewData = {
     headers: string[];
     rows: CellValue[][];
 };
 
+type SelectedAcsColumn = {
+    table_id: string;
+    column_id: string;
+};
+
 const PREVIEW_LIMIT = 5;
 
-function DatasetGeoJoiner() {
-    const [dataSource, setDataSource] = useState<DataSource>('File Upload');
+function DatasetGeoJoiner({
+    selectedAcsColumns,
+}: {
+    selectedAcsColumns: SelectedAcsColumn[];
+}) {
+    const [dataSource] = useState<DataSource>('File Upload');
     const [sessionId, setSessionId] = useState('');
     const [tempPath, setTempPath] = useState('');
     const [filename, setFilename] = useState('');
@@ -180,6 +214,78 @@ function DatasetGeoJoiner() {
         }
     }
 
+        async function handleGeocode() {
+        if (!sessionId || !tempPath || !joinField) {
+            setError('Please upload a file and select an address field.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            const query = new URLSearchParams({
+                path: tempPath,
+            });
+
+            const response = await fetch(
+                `${API_BASE_URL}/geocode-file?${query.toString()}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId,
+                        addressField: joinField,
+                        join: 'left',
+                        acsColumns: selectedAcsColumns,
+                    }),
+                },
+            );
+
+            const result = (await response.json()) as EnrichResponse;
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.error || 'Could not geocode the uploaded file.',
+                );
+            }
+
+            const downloadQuery = new URLSearchParams({
+                sessionId: result.sessionId,
+                filename: result.filename,
+            });
+
+            const downloadResponse = await fetch(
+                `${API_BASE_URL}/download-file?${downloadQuery.toString()}`,
+            );
+
+            if (!downloadResponse.ok) {
+                throw new Error('Geocoding succeeded, but the download failed.');
+            }
+
+            const blob = await downloadResponse.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+
+            link.href = url;
+            link.download = result.filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : 'An unexpected error occurred during geocoding.',
+            );
+        } finally {
+            setLoading(false);
+        }
+    }
+
     const visibleRows = showAllRows
         ? (preview?.rows ?? [])
         : (preview?.rows ?? []).slice(0, PREVIEW_LIMIT);
@@ -247,10 +353,10 @@ function DatasetGeoJoiner() {
 
                     <button
                         type="button"
-                        disabled={!joinField}
-                        onClick={() => console.log(`Geocode ${joinField}`)}
+                        disabled={!joinField || !sessionId || loading}
+                        onClick={handleGeocode}
                     >
-                        Geocode {joinField || 'field'}
+                        {loading ? 'Geocoding…' : `Geocode ${joinField || 'field'}`}
                     </button>
                 </>
             )}
