@@ -12,10 +12,10 @@
     "dependencies": {
         "express": "^5.2.1",
         "express-rate-limit": "^8.7.0",
-        "multer": "^2.4.0",
+        "multer": "^2.5.0",
         "pg": "^8.23.1",
         "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-        "zod": "^4.6.5"
+        "zod": "^4.6.6"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
