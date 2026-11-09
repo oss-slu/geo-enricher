@@ -1,0 +1,87 @@
+name: sbom
+
+# Generates a Software Bill of Materials (SBOM) for the repository workspace
+# (the frontend in app/ and the backend in api/, read from their package-lock.json
+# files), keeps it as a downloadable workflow artifact, and on pushes to main
+# attests its provenance so a downloaded copy can be verified with the GitHub CLI:
+#
+#   gh attestation verify ./geo-enricher-sbom.spdx.json --owner oss-slu
+#
+# Part of the OSS-SLU Supply-Chain Security Baseline. No application code, API
+# routes, or test suites are touched; the existing test workflows are unchanged.
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+
+# Minimum permissions for SBOM generation and attestation:
+#   contents: read           - check out the repository
+#   id-token: write          - OIDC token for Sigstore signing (actions/attest)
+#   attestations: write      - store the attestation on GitHub
+#   artifact-metadata: write - link the attestation to the uploaded artifact
+permissions:
+    contents: read
+    id-token: write
+    attestations: write
+    artifact-metadata: write
+
+env:
+    SBOM_FILE: geo-enricher-sbom.spdx.json
+
+jobs:
+    sbom:
+        name: generate, preserve, and attest SBOM
+        runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v4
+
+            - name: generate SBOM with Syft
+              # anchore/sbom-action wraps Syft; pinned so every run measures with the same tool.
+              uses: anchore/sbom-action@v0
+              with:
+                  path: .
+                  format: spdx-json
+                  output-file: ${{ env.SBOM_FILE }}
+                  syft-version: v1.52.0
+                  upload-artifact: false
+
+            - name: summarize SBOM contents
+              shell: python
+              run: |
+                  import json, os
+                  with open(os.environ["SBOM_FILE"], encoding="utf-8") as f:
+                      sbom = json.load(f)
+                  packages = sorted(
+                      {(p.get("name", ""), p.get("versionInfo", "")) for p in sbom.get("packages", [])}
+                  )
+                  lines = [
+                      "## SBOM summary",
+                      "",
+                      f"**{len(packages)} packages** cataloged in `{os.environ['SBOM_FILE']}`",
+                      "",
+                      "| Package | Version |",
+                      "|---|---|",
+                  ]
+                  lines += [f"| {name} | {version} |" for name, version in packages]
+                  with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+                      f.write("\n".join(lines) + "\n")
+
+            - name: upload SBOM artifact
+              uses: actions/upload-artifact@v6
+              with:
+                  name: geo-enricher-sbom
+                  path: ${{ env.SBOM_FILE }}
+                  if-no-files-found: error
+
+            - name: attest SBOM provenance
+              # Pull requests from forks get no signing token, so this runs only on main.
+              if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+              uses: actions/attest@v4
+              with:
+                  subject-path: ${{ env.SBOM_FILE }}
