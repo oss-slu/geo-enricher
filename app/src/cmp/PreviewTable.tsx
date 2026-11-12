@@ -15,10 +15,8 @@ function PreviewTable({ preview }: { preview: PreviewData }) {
         : preview.rows.slice(0, PREVIEW_LIMIT);
 
     return (
-        <div>
+        <div className='preview-section'>
             <h3>Dataset preview</h3>
-            <p>Showing {visibleRows.length} of {preview.rows.length} data rows.</p>
-
             <div style={{ overflowX: 'auto' }}>
                 <table>
                     <thead>
@@ -41,15 +39,17 @@ function PreviewTable({ preview }: { preview: PreviewData }) {
                     </tbody>
                 </table>
             </div>
-
-            {preview.rows.length > PREVIEW_LIMIT && (
-                <button
-                    type="button"
-                    onClick={() => setShowAllRows((current) => !current)}
-                >
-                    {showAllRows ? 'Show fewer rows' : 'Show more rows'}
-                </button>
-            )}
+            <div className='showing-rows'>Showing {visibleRows.length} of {preview.rows.length} rows {
+                preview.rows.length > PREVIEW_LIMIT && (
+                    <button
+                        type="button"
+                        onClick={() => setShowAllRows((current) => !current)}
+                    >
+                        {showAllRows ? 'Show fewer' : 'Show more'}
+                    </button>
+                )
+            }</div>
+            
         </div>
     );
 }

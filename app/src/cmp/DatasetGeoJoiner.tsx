@@ -309,10 +309,11 @@ function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: Selected
             {loading && <p role="status">Processing file…</p>}
             {error && <p role="alert">{error}</p>}
 
+            {preview && <PreviewTable preview={preview} />}
+
             {sessionId && (
                 <>
-
-                    <label htmlFor="join-field">Potential address field(s): </label>
+                    <label htmlFor="join-field"><b>Potential address field(s): </b></label>
                     <select
                         id="join-field"
                         value={joinField}
@@ -336,7 +337,7 @@ function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: Selected
                 </>
             )}
 
-            {preview && <PreviewTable preview={preview} />}
+            
             
         </section>
     );
