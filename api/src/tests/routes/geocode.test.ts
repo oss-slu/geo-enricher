@@ -8,6 +8,7 @@ jest.unstable_mockModule('../../utils/http', () => ({ getJson }));
 const { createApp } = await import('../../app');
 const app = createApp();
 const address = '6957 Chippewa St, Saint Louis, MO 63109';
+
 const response: censusGeocodeResp = {
     result: {
         input: { address: { address } },
@@ -15,6 +16,12 @@ const response: censusGeocodeResp = {
             {
                 matchedAddress: address,
                 coordinates: { x: -90, y: 38 },
+                addressComponents: {
+                    city: 'SAINT LOUIS',
+                    state: 'MO',
+                    zip: '63109',
+                    streetName: 'CHIPPEWA',
+                },
                 geographies: {
                     'Census Block Groups': [
                         {
@@ -32,13 +39,17 @@ const response: censusGeocodeResp = {
     },
 };
 
+
 describe.each(['get', 'post'] as const)('%s /geocode', (method) => {
     const send = (addr: unknown) =>
         method === 'get'
             ? request(app).get('/geocode').query({ addr })
             : request(app).post('/geocode').send({ addr });
 
-    beforeEach(() => getJson.mockReset());
+    beforeEach(() => {
+        getJson.mockReset();
+        getJson.mockResolvedValue(response);
+    });
 
     it.each(['', '   ', 'PO Box 123, Saint Louis, MO 63109'])(
         'rejects invalid input without calling Census: %s',

@@ -44,6 +44,88 @@ it.each(['csv', 'xls', 'xlsx'] as const)(
     },
 );
 
+describe('CSV encoding support', () => {
+    const csvText =
+        'address,name\n"123 Main St, St Louis, MO",Zoë\n"456 Oak St, St Louis, MO",André\n';
+
+    const expectedRows = [
+        ['123 Main St, St Louis, MO', 'Zoë'],
+        ['456 Oak St, St Louis, MO', 'André'],
+    ];
+
+    it('reads UTF-8 CSV without a BOM', () => {
+        const parsed = readDataset(Buffer.from(csvText, 'utf8'), 'csv');
+
+        expect(parsed.columns.map((col) => col.label)).toEqual([
+            'address',
+            'name',
+        ]);
+        expect(parsed.rows).toEqual(expectedRows);
+    });
+
+    it('reads UTF-8 CSV with a BOM', () => {
+        const buffer = Buffer.concat([
+            Buffer.from([0xef, 0xbb, 0xbf]),
+            Buffer.from(csvText, 'utf8'),
+        ]);
+
+        expect(readDataset(buffer, 'csv').rows).toEqual(expectedRows);
+    });
+
+    it('reads UTF-16LE CSV with a BOM', () => {
+        const buffer = Buffer.concat([
+            Buffer.from([0xff, 0xfe]),
+            Buffer.from(csvText, 'utf16le'),
+        ]);
+
+        const parsed = readDataset(buffer, 'csv');
+
+        expect(parsed.columns.map((col) => col.label)).toEqual([
+            'address',
+            'name',
+        ]);
+        expect(parsed.rows).toEqual(expectedRows);
+    });
+
+    it('reads UTF-16BE CSV with a BOM', () => {
+        const littleEndian = Buffer.from(csvText, 'utf16le');
+        const bigEndian = Buffer.from(littleEndian);
+
+        for (let i = 0; i < bigEndian.length; i += 2) {
+            const first = bigEndian[i];
+            bigEndian[i] = bigEndian[i + 1];
+            bigEndian[i + 1] = first;
+        }
+
+        const buffer = Buffer.concat([
+            Buffer.from([0xfe, 0xff]),
+            bigEndian,
+        ]);
+
+        const parsed = readDataset(buffer, 'csv');
+
+        expect(parsed.columns.map((col) => col.label)).toEqual([
+            'address',
+            'name',
+        ]);
+        expect(parsed.rows).toEqual(expectedRows);
+    });
+
+    it('rejects invalid UTF-8 CSV', () => {
+    expect(() => readDataset(Buffer.from([0xff]), 'csv')).toThrow(
+        'CSV must use UTF-8 or UTF-16 encoding',
+    );
+});
+
+    it('rejects malformed UTF-16 CSV', () => {
+        const buffer = Buffer.from([0xff, 0xfe, 0x61]);
+
+        expect(() => readDataset(buffer, 'csv')).toThrow(
+            'CSV must use UTF-8 or UTF-16 encoding',
+        );
+    });
+});
+
 it.each(['xls', 'xlsx'] as const)(
     'preserves supported Excel cell types in %s',
     (type) => {
@@ -201,7 +283,7 @@ it('accepts headers-only datasets and rejects empty/malformed/oversized files', 
     expect(readDataset(Buffer.from('a,b\n'), 'csv').rows).toEqual([]);
     for (const input of ['', 'a\n"unclosed', 'a\n"closed"oops', 'a\nb"c'])
         expect(() => readDataset(Buffer.from(input), 'csv')).toThrow();
-    expect(() => readDataset(Buffer.from([0xff]), 'csv')).toThrow('UTF-8');
+    expect(() => readDataset(Buffer.from([0xff]), 'csv')).toThrow('CSV must use UTF-8 or UTF-16 encoding',);
     expect(() =>
         readDataset(Buffer.alloc(FILE_LIMITS.bytes + 1), 'csv'),
     ).toThrow('byte limit');

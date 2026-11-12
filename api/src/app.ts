@@ -10,15 +10,17 @@ import datasetFile from './routes/datasetFile';
 import acsMeta from './routes/acsMeta';
 import queryACS from './routes/queryACS';
 import { FILE_LIMITS } from './utils/fileLimits';
+import downloadFile from './routes/downloadFile';
 
 export const ROUTES = [
     { router: health, route: '/health' },
     { router: upload, route: '/upload' },
     { router: geocode, route: '/geocode' },
-    { router: dbHealth, route: '/db-health ' },
+    { router: dbHealth, route: '/db-health' },
     { router: addressFields, route: '/address-fields' },
     { router: geocodeFile, route: '/geocode-file' },
     { router: datasetFile, route: '/dataset-file' },
+    { router: downloadFile, route: '/download-file' },
     { router: acsMeta, route: '/acs-metadata' },
     { router: queryACS, route: '/query-acs' },
 ];

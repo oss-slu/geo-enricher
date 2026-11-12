@@ -108,11 +108,41 @@ export function validateDataset(value: unknown): asserts value is Dataset {
 function parseCsv(buffer: Buffer): Cell[][] {
     let text: string;
     try {
-        text = new TextDecoder('utf-8', { fatal: true })
-            .decode(buffer)
-            .replace(/^\uFEFF/u, '');
+        let encoding: 'utf-8' | 'utf-16le' | 'utf-16be' = 'utf-8';
+        let content = buffer;
+
+        if (
+            buffer.length >= 2 &&
+            buffer[0] === 0xff &&
+            buffer[1] === 0xfe
+        ){
+          encoding = 'utf-16le';
+          content = buffer.subarray(2);
+        } else if (
+          buffer.length >= 2 &&
+          buffer[0] === 0xfe &&
+          buffer[1] === 0xff
+        ) {
+          encoding = 'utf-16be';
+          content = buffer.subarray(2);
+        } else if (
+          buffer.length >= 3 &&
+          buffer[0] === 0xef &&
+          buffer[1] === 0xbb &&
+          buffer[2] === 0xbf
+        ) {
+            content = buffer.subarray(3);
+        }
+
+        text = new TextDecoder(encoding, { fatal: true }).decode(content);
+
+
     } catch {
-        throw new FileError(422, 'UNREADABLE_DATASET', 'CSV must be UTF-8');
+        throw new FileError(
+            422,
+            'UNREADABLE_DATASET',
+            'CSV must use UTF-8 or UTF-16 encoding',
+        );
     }
     if (!text) return [];
     const rows: Cell[][] = [];

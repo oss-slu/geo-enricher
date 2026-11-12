@@ -43,14 +43,24 @@ async function sessionDir(sessionId: string, create = false): Promise<string> {
     validateSessionId(sessionId);
     const root = baseDir();
     if (create) await fs.mkdir(root, { recursive: true, mode: 0o700 });
-    const canonicalRoot = await fs.realpath(root);
+    let canonicalRoot: string;
+    try {
+        canonicalRoot = await fs.realpath(root);
+    } catch (err) {
+        return translateMissing(err);
+    }
     const dir = path.resolve(canonicalRoot, sessionId);
     // Check containment before any filesystem operation on the requested session.
     if (!dir.startsWith(path.join(canonicalRoot, path.sep))) {
         throw new FileError(400, 'INVALID_PATH', 'Invalid session directory');
     }
     if (create) await fs.mkdir(dir, { recursive: true, mode: 0o700 });
-    const stat = await fs.lstat(dir);
+    let stat;
+    try {
+        stat = await fs.lstat(dir);
+    } catch (err) {
+        return translateMissing(err);
+    }
     if (
         stat.isSymbolicLink() ||
         !stat.isDirectory() ||
@@ -238,4 +248,17 @@ export async function cleanupExpiredSessions(now = Date.now()): Promise<void> {
             throw err;
         }
     }
+}
+
+export async function readSessionFilename(
+    sessionId: string,
+    filename: string,
+): Promise<Buffer> {
+    validateSessionId(sessionId);
+    validateFilename(filename);
+
+    const dir = await sessionDir(sessionId);
+    const filePath = path.join(dir, filename);
+
+    return readSessionFile(sessionId, filePath);
 }

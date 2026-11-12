@@ -42,7 +42,12 @@ describe('AcsColumnSelector', () => {
     it('loads and displays ACS tables', async () => {
         mockMetadataResponse();
 
-        render(<AcsColumnSelector table_ids={TABLE_IDS}/>);
+        render(
+            <AcsColumnSelector
+                table_ids={TABLE_IDS}
+                onSelectionChange={vi.fn()}
+            />,
+        );
 
         expect(screen.getByRole('status')).toHaveTextContent(
             'Loading ACS metadata',
@@ -64,7 +69,13 @@ describe('AcsColumnSelector', () => {
     it('expands a table and displays its columns', async () => {
         mockMetadataResponse();
 
-        render(<AcsColumnSelector table_ids={TABLE_IDS}/>);
+        render(
+            <AcsColumnSelector
+                table_ids={TABLE_IDS}
+                onSelectionChange={vi.fn()}
+            />,
+        );
+
 
         const tableButton = await screen.findByRole('button', {
             name: /B02001.*Race/,
@@ -82,7 +93,12 @@ describe('AcsColumnSelector', () => {
     it('allows columns to be selected and deselected', async () => {
         mockMetadataResponse();
 
-        render(<AcsColumnSelector table_ids={TABLE_IDS}/>);
+        render(
+            <AcsColumnSelector
+                table_ids={TABLE_IDS}
+                onSelectionChange={vi.fn()}
+            />,
+        );
 
         fireEvent.click(
             await screen.findByRole('button', {
@@ -111,7 +127,12 @@ describe('AcsColumnSelector', () => {
             vi.fn().mockRejectedValue(new Error('Network error')),
         );
 
-        render(<AcsColumnSelector table_ids={TABLE_IDS}/>);
+        render(
+            <AcsColumnSelector
+                table_ids={TABLE_IDS}
+                onSelectionChange={vi.fn()}
+            />,
+        );
 
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'Network error',
