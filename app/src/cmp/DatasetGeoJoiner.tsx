@@ -49,7 +49,7 @@ const ADDR_EXAMPLES = [
     '72 LAKE SHORE DR BARRINGTON IL 60010-1471 USA',
 ];
 
-function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: SelectedAcsColumn[] }) {
+export default function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: SelectedAcsColumn[] }) {
     const [sessionId, setSessionId] = useState('');
     const [tempPath, setTempPath] = useState('');
     const [uploadedFile, setUploadedFile] = useState<string | null>(null)
@@ -280,10 +280,10 @@ function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: Selected
     };
 
     return (
-        <section aria-labelledby="dataset-joiner-heading">
+        <section>
             <div className='upload-heading'>
                 <div>
-                    <span className='upload-msg'>Upload a CSV or Excel file...</span>
+                    <label htmlFor='dataset-file' className='upload-msg'>Upload a CSV or Excel file...</label>
                     <span className='help' tabIndex={0} aria-describedby='addr-help'>
                         ? <span id='addr-help' role='tooltip' className='help-tip'>
                             <span>Uploaded file must contain a field with valid US addresses containing street name/number, city, state, and optional zip code e.g.</span>
@@ -342,5 +342,3 @@ function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: Selected
         </section>
     );
 }
-
-export default DatasetGeoJoiner;

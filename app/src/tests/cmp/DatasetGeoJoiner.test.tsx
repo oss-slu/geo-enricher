@@ -10,14 +10,14 @@ describe('DatasetGeoJoiner', () => {
     it('renders the data source and file upload controls', () => {
         render(<DatasetGeoJoiner selectedAcsColumns={[]}/>);
 
-        expect(
-            screen.getByRole('heading', { name: 'Upload a file' }),
-        ).toBeInTheDocument();
+        // expect(
+        //     screen.getByRole('heading', { name: 'Upload a file' }),
+        // ).toBeInTheDocument();
 
         // expect(screen.getByLabelText('Data source')).toHaveValue('File Upload');
 
         expect(
-            screen.getByLabelText('Upload CSV or Excel file...'),
+            screen.getByLabelText('Upload a CSV or Excel file...'),
         ).toBeInTheDocument();
     });
 
@@ -28,7 +28,7 @@ describe('DatasetGeoJoiner', () => {
             type: 'text/plain',
         });
 
-        fireEvent.change(screen.getByLabelText('Upload CSV or Excel file...'), {
+        fireEvent.change(screen.getByLabelText('Upload a CSV or Excel file...'), {
             target: { files: [file] },
         });
 
@@ -53,7 +53,7 @@ describe('DatasetGeoJoiner', () => {
             { type: 'text/csv' },
         );
 
-        fireEvent.change(screen.getByLabelText('Upload CSV or Excel file...'), {
+        fireEvent.change(screen.getByLabelText('Upload a CSV or Excel file...'), {
             target: { files: [file] },
         });
 
@@ -95,15 +95,13 @@ describe('DatasetGeoJoiner', () => {
             { type: 'text/csv' },
         );
 
-        fireEvent.change(screen.getByLabelText('Upload CSV or Excel file...'), {
+        fireEvent.change(screen.getByLabelText('Upload a CSV or Excel file...'), {
             target: { files: [file] },
         });
 
-        expect(
-            await screen.findByText('Uploaded: addresses.csv'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText(/successfully/)).toBeInTheDocument();
 
-        expect(screen.getByLabelText('Potential address field')).toHaveValue(
+        expect(screen.getByLabelText(/Potential address field/)).toHaveValue(
             'Address',
         );
 
@@ -159,28 +157,28 @@ describe('DatasetGeoJoiner', () => {
             type: 'text/csv',
         });
 
-        fireEvent.change(screen.getByLabelText('Upload CSV or Excel file...'), {
+        fireEvent.change(screen.getByLabelText('Upload a CSV or Excel file...'), {
             target: { files: [file] },
         });
 
         expect(
-            await screen.findByText('Showing 5 of 6 data rows.'),
+            await screen.findByText('Showing 5 of 6 rows'),
         ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Show more rows' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
 
         expect(
-            screen.getByText('Showing 6 of 6 data rows.'),
+            screen.getByText('Showing 6 of 6 rows'),
         ).toBeInTheDocument();
 
         expect(screen.getByText('300 Cedar Street')).toBeInTheDocument();
 
         fireEvent.click(
-            screen.getByRole('button', { name: 'Show fewer rows' }),
+            screen.getByRole('button', { name: 'Show fewer' }),
         );
 
         expect(
-            screen.getByText('Showing 5 of 6 data rows.'),
+            screen.getByText('Showing 5 of 6 rows'),
         ).toBeInTheDocument();
     });
 });

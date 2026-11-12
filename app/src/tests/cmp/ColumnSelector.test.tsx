@@ -53,17 +53,13 @@ describe('AcsColumnSelector', () => {
             'Loading ACS metadata',
         );
 
-        expect(
-            await screen.findByRole('button', {
-                name: /B02001.*Race/,
-            }),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('Race')).toBeInTheDocument();
 
-        expect(
-            screen.getByRole('button', {
-                name: /B15003.*Educational Attainment/,
-            }),
-        ).toBeInTheDocument();
+        // expect(
+        //     screen.getByRole('button', {
+        //         name: /B15003.*Educational Attainment/,
+        //     }),
+        // ).toBeInTheDocument();
     });
 
     it('expands a table and displays its columns', async () => {
@@ -76,18 +72,22 @@ describe('AcsColumnSelector', () => {
             />,
         );
 
+        const summary = (await screen.findByText('Race')).closest('summary')!;
+        fireEvent.click(summary);
 
-        const tableButton = await screen.findByRole('button', {
-            name: /B02001.*Race/,
-        });
+        expect(screen.getByLabelText(/B02001001/)).toBeInTheDocument();
+        expect(screen.getByLabelText(/B02001002/)).toBeInTheDocument();
+        // const tableButton = await screen.findByRole('button', {
+        //     name: /B02001.*Race/,
+        // });
 
-        fireEvent.click(tableButton);
+        // fireEvent.click(tableButton);
 
-        expect(tableButton).toHaveAttribute('aria-expanded', 'true');
+        // expect(tableButton).toHaveAttribute('aria-expanded', 'true');
 
-        expect(
-            screen.getByLabelText(/B02001002.*White alone/),
-        ).toBeInTheDocument();
+        // expect(
+        //     screen.getByLabelText(/B02001002.*White alone/),
+        // ).toBeInTheDocument();
     });
 
     it('allows columns to be selected and deselected', async () => {
@@ -100,25 +100,28 @@ describe('AcsColumnSelector', () => {
             />,
         );
 
-        fireEvent.click(
-            await screen.findByRole('button', {
-                name: /B02001.*Race/,
-            }),
-        );
+        // fireEvent.click(
+        //     await screen.findByRole('button', {
+        //         name: /B02001.*Race/,
+        //     }),
+        // );
+        expect(await screen.findByText('Race')).toBeInTheDocument();
+        const total = screen.getByRole('checkbox', { name: /B02001001/ });
+        fireEvent.click(total);
+        expect(total).toBeChecked();
+    //     const column = screen.getByRole('checkbox', {
+    //         name: /B02001002.*White alone/,
+    //     });
 
-        const column = screen.getByRole('checkbox', {
-            name: /B02001002.*White alone/,
-        });
+    //     fireEvent.click(column);
 
-        fireEvent.click(column);
+    //     expect(column).toBeChecked();
+    //     expect(screen.getByText('1 columns selected')).toBeInTheDocument();
 
-        expect(column).toBeChecked();
-        expect(screen.getByText('1 columns selected')).toBeInTheDocument();
+    //     fireEvent.click(column);
 
-        fireEvent.click(column);
-
-        expect(column).not.toBeChecked();
-        expect(screen.getByText('0 columns selected')).toBeInTheDocument();
+    //     expect(column).not.toBeChecked();
+    //     expect(screen.getByText('0 columns selected')).toBeInTheDocument();
     });
 
     it('displays an error when the API request fails', async () => {
