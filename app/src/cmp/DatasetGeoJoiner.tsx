@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-//import * as cptable from 'xlsx/dist/cpexcel.full.mjs';
-import type { DataSource } from '../consts';
+import PreviewTable, { type PreviewData } from './PreviewTable';
 
 const API_BASE_URL = '/api';
 
@@ -37,38 +36,31 @@ type EnrichResponse = {
     error?: string;
 };
 
-type CellValue = string | number | boolean | null;
-type PreviewData = {
-    headers: string[];
-    rows: CellValue[][];
-};
-
 type SelectedAcsColumn = {
     table_id: string;
     column_id: string;
 };
 
-const PREVIEW_LIMIT = 5;
+const ADDR_EXAMPLES = [
+    '123 Main St, Saint Louis MO 63109',
+    '456 Main St, Apt. 2E, Saint Louis, MO, 63109',
+    '12A Martin Luther King Jr Blvd, Saint Louis, MO 63103',
+    "12 1/2 Rue de l'Église, Montréal, MO 63103",
+    '72 LAKE SHORE DR BARRINGTON IL 60010-1471 USA',
+];
 
-function DatasetGeoJoiner({
-    selectedAcsColumns,
-}: {
-    selectedAcsColumns: SelectedAcsColumn[];
-}) {
-    const [dataSource] = useState<DataSource>('File Upload');
+function DatasetGeoJoiner({ selectedAcsColumns }: { selectedAcsColumns: SelectedAcsColumn[] }) {
     const [sessionId, setSessionId] = useState('');
     const [tempPath, setTempPath] = useState('');
+    const [uploadedFile, setUploadedFile] = useState<string | null>(null)
     const [filename, setFilename] = useState('');
     const [joinField, setJoinField] = useState('');
     const [addressFields, setAddressFields] = useState<string[]>([]);
     const [preview, setPreview] = useState<PreviewData | null>(null);
-    const [showAllRows, setShowAllRows] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState<string | null>(null);
     const [error, setError] = useState('');
 
-    async function handleFileChange(
-        event: React.ChangeEvent<HTMLInputElement>,
-    ) {
+    async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -79,7 +71,6 @@ function DatasetGeoJoiner({
         setAddressFields([]);
         setJoinField('');
         setPreview(null);
-        setShowAllRows(false);
 
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (!extension || !['csv', 'xls', 'xlsx'].includes(extension)) {
@@ -87,7 +78,9 @@ function DatasetGeoJoiner({
             return;
         }
 
-        setLoading(true);
+        setUploadedFile(file.name);
+
+        setLoading(`Attempting to upload ${uploadedFile}...`);
 
         try {
             // Read the selected file in the browser for the preview.
@@ -210,17 +203,17 @@ function DatasetGeoJoiner({
                     : 'An unexpected error occurred.',
             );
         } finally {
-            setLoading(false);
+            setLoading(null);
         }
     }
 
-        async function handleGeocode() {
+    async function handleGeocode() {
         if (!sessionId || !tempPath || !joinField) {
             setError('Please upload a file and select an address field.');
             return;
         }
 
-        setLoading(true);
+        setLoading(`Attempting to enrich ${uploadedFile} with selected ACS fields...`);
         setError('');
 
         try {
@@ -282,62 +275,44 @@ function DatasetGeoJoiner({
                     : 'An unexpected error occurred during geocoding.',
             );
         } finally {
-            setLoading(false);
+            setLoading(null);
         }
-    }
-
-    const visibleRows = showAllRows
-        ? (preview?.rows ?? [])
-        : (preview?.rows ?? []).slice(0, PREVIEW_LIMIT);
+    };
 
     return (
         <section aria-labelledby="dataset-joiner-heading">
-            <h2 id="dataset-joiner-heading">Upload a file</h2>
-
-            {/* <label htmlFor="data-source">Data source</label>
-            <select
-                id="data-source"
-                value={dataSource}
-                onChange={(event) =>
-                    setDataSource(event.target.value as DataSource)
-                }
-            >
-                {DATA_SOURCE_OPTIONS.map((source) => (
-                    <option key={source} value={source}>
-                        {source}
-                    </option>
-                ))}
-            </select> */}
-
-            {dataSource === 'File Upload' ? (
-                <>
-                    <label htmlFor="dataset-file">
-                        Upload CSV or Excel file...
-                    </label><br></br>
-                    <input
-                        id="dataset-file"
-                        type="file"
-                        accept=".csv,.xls,.xlsx"
-                        onChange={handleFileChange}
-                    />
-                </>
-            ) : (
-                <button
-                    type="button"
-                    onClick={() => console.log('Search data source')}
-                >
-                    Search
-                </button>
-            )}
+            <div className='upload-heading'>
+                <div>
+                    <span className='upload-msg'>Upload a CSV or Excel file...</span>
+                    <span className='help' tabIndex={0} aria-describedby='addr-help'>
+                        ? <span id='addr-help' role='tooltip' className='help-tip'>
+                            <span>Uploaded file must contain a field with valid US addresses containing street name/number, city, state, and optional zip code e.g.</span>
+                            <ul>
+                                {ADDR_EXAMPLES.map(e => (
+                                    <li key={e}>{e}</li>
+                                ))}
+                            </ul>
+                        </span>
+                    </span>
+                </div>
+                <input
+                    id="dataset-file"
+                    type="file"
+                    accept=".csv,.xls,.xlsx"
+                    onChange={handleFileChange}
+                />
+                {uploadedFile && (<p><small>Uploaded <i>{uploadedFile}</i> successfully.
+                    {tempPath && <span> Temporary file stored as <i>{filename}</i></span>}.
+                </small></p>)}
+            </div>
 
             {loading && <p role="status">Processing file…</p>}
             {error && <p role="alert">{error}</p>}
 
             {sessionId && (
                 <>
-                    <p>Uploaded: {filename}</p>
 
-                    <label htmlFor="join-field">Potential address field</label>
+                    <label htmlFor="join-field">Potential address field(s): </label>
                     <select
                         id="join-field"
                         value={joinField}
@@ -353,7 +328,7 @@ function DatasetGeoJoiner({
 
                     <button
                         type="button"
-                        disabled={!joinField || !sessionId || loading}
+                        disabled={!joinField || !sessionId || loading !== null}
                         onClick={handleGeocode}
                     >
                         {loading ? 'Geocoding…' : `Geocode ${joinField || 'field'}`}
@@ -361,61 +336,8 @@ function DatasetGeoJoiner({
                 </>
             )}
 
-            {preview && (
-                <div>
-                    <h3>Dataset preview</h3>
-                    <p>
-                        Showing {visibleRows.length} of {preview.rows.length}{' '}
-                        data rows.
-                    </p>
-
-                    <div style={{ overflowX: 'auto' }}>
-                        <table>
-                            <thead>
-                                <tr>
-                                    {preview.headers.map((header, index) => (
-                                        <th key={`${header}-${index}`}>
-                                            {header}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {visibleRows.map((row, rowIndex) => (
-                                    <tr key={rowIndex}>
-                                        {preview.headers.map(
-                                            (_, columnIndex) => (
-                                                <td key={columnIndex}>
-                                                    {String(
-                                                        row[columnIndex] ?? '',
-                                                    )}
-                                                </td>
-                                            ),
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {preview.rows.length > PREVIEW_LIMIT && (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setShowAllRows((current) => !current)
-                            }
-                        >
-                            {showAllRows ? 'Show fewer rows' : 'Show more rows'}
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {tempPath && (
-                <p>
-                    <small>Temporary file stored by the API.</small>
-                </p>
-            )}
+            {preview && <PreviewTable preview={preview} />}
+            
         </section>
     );
 }
