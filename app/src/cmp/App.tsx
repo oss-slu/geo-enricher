@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TABLE_IDS, URLS } from '../consts';
 import DatasetGeoJoiner from './DatasetGeoJoiner';
-import AcsColumnSelector from './AcsColumnSelector';
+import ColumnSelector from './ColumnSelector';
 import MenuBar from './MenuBar';
 
 export type SelectedAcsColumn = {
@@ -23,7 +23,7 @@ function App() {
                 </div>
             </MenuBar>
             <DatasetGeoJoiner selectedAcsColumns={selectedAcsColumns} />
-            <AcsColumnSelector table_ids={TABLE_IDS} onSelectionChange={setSelectedAcsColumns} />
+            <ColumnSelector table_ids={TABLE_IDS} onSelectionChange={setSelectedAcsColumns} />
         </main>
     );
 }

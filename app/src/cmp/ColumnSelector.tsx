@@ -23,17 +23,9 @@ type AcsColumnSelectorProps = {
     onSelectionChange: (columns: SelectedAcsColumn[]) => void;
 };
 
-function AcsColumnSelector({
-    table_ids,
-    onSelectionChange,
-}: AcsColumnSelectorProps) {
+export default function ColumnSelector({ table_ids, onSelectionChange }: AcsColumnSelectorProps) {
     const [metadata, setMetadata] = useState<MetadataRow[]>([]);
-    const [expandedTables, setExpandedTables] = useState<Set<string>>(
-        new Set(),
-    );
-    const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
-        new Set(),
-    );
+    const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,9 +36,7 @@ function AcsColumnSelector({
             try {
                 const params = new URLSearchParams();
 
-                table_ids.forEach((table) => {
-                    params.append('tables', table);
-                });
+                table_ids.forEach(table => params.append('tables', table));
 
                 const response = await fetch(
                     `/api/acs-metadata?${params.toString()}`,
@@ -60,20 +50,12 @@ function AcsColumnSelector({
                         result.message ?? 'Failed to load ACS metadata.',
                     );
                 }
-
                 setMetadata(result.data ?? []);
             } catch (err) {
                 if (controller.signal.aborted) return;
-
-                setError(
-                    err instanceof Error
-                        ? err.message
-                        : 'Failed to load ACS metadata.',
-                );
+                setError(err instanceof Error ? err.message : 'Failed to load ACS metadata.');
             } finally {
-                if (!controller.signal.aborted) {
-                    setLoading(false);
-                }
+                if (!controller.signal.aborted) setLoading(false);
             }
         }
 
@@ -81,20 +63,6 @@ function AcsColumnSelector({
 
         return () => controller.abort();
     }, []);
-
-    function toggleTable(tableId: string) {
-        setExpandedTables((current) => {
-            const next = new Set(current);
-
-            if (next.has(tableId)) {
-                next.delete(tableId);
-            } else {
-                next.add(tableId);
-            }
-
-            return next;
-        });
-    }
 
     function toggleColumn(columnId: string) {
         setSelectedColumns((current) => {
@@ -116,7 +84,6 @@ function AcsColumnSelector({
             return next;
         });
     }
-
 
     function clearColumns(tableId?: string) {
         setSelectedColumns((current) => {
@@ -159,70 +126,62 @@ function AcsColumnSelector({
     );
 
     return (
-        <section aria-labelledby="acs-selector-heading">
-            <h2 id="acs-selector-heading">American Community Survey data fields available:</h2>
-            <span>Select a table to view available data fields</span>
+        <details className='acs-selector' open>
+            <summary id='acs-selector-heading'>
+                Select ACS (American Community Survey) data fields to add to file
+                {selectedColumns.size > 0 && ` (${selectedColumns.size} selected)`}
+            </summary>
+            <section aria-labelledby="acs-selector-heading">
+                <p><i>Expand tables to select from available fields</i></p>
 
-            {loading && <p role="status">Loading ACS metadata...</p>}
+                {loading && <p role="status">Loading ACS metadata...</p>}
 
-            {error && <p role="alert">{error}</p>}
+                {error && <p role="alert">{error}</p>}
 
-            {!loading && !error && tables.length === 0 && (
-                <p>No ACS metadata available.</p>
-            )}
+                {!loading && !error && tables.length === 0 && <p>No ACS metadata available.</p>}
 
-            {!loading && !error && tables.length > 0 && (
-                <div className='col-sel-cont'>
-                    {tables.map((table) => {
-                        const expanded = expandedTables.has(table.table_id);
-                        const columns = metadata.filter(
-                            (row) => row.table_id === table.table_id,
-                        );
+                {!loading && !error && tables.length > 0 && (
+                    <div className='col-sel-cont'>
+                        {tables.map((table) => {
+                            const columns = metadata.filter(row => row.table_id === table.table_id);
+                            const selectedInTable = columns.filter(c => selectedColumns.has(c.column_id)).length;
+                            return (
+                                <details key={table.table_id} className='col-sel-opt-outer-cont'>
+                                    {/* table name displayed here */}
+                                    <summary>
+                                        <b>{table.table_id}:</b> <span className='ttl'><u><small>{table.table_title}</small></u></span>
+                                    </summary>
 
-                        return (
-                            <div key={table.table_id} className='col-sel-opt-outer-cont'>
-                                <button
-                                    type="button"
-                                    aria-expanded={expanded}
-                                    onClick={() => toggleTable(table.table_id)}
-                                > { expanded ? '^' : 'v'}| <b>{table.table_id}:</b> {table.table_title}
-                                </button>
-
-                                {expanded && (
                                     <div className='col-sel-opt-inner-cont'>
                                         {columns.map((column) => (
                                             <div key={column.column_id} className='col-sel-inner-opt'>
-                                                <label>
+                                                <label className='col-label'>
                                                     <input
                                                         type="checkbox"
-                                                        checked={selectedColumns.has(
-                                                            column.column_id,
-                                                        )}
-                                                        onChange={() =>
-                                                            toggleColumn(
-                                                                column.column_id,
-                                                            )
-                                                        }
-                                                    /><b>{column.column_id}:</b> {column.column_title}
+                                                        checked={selectedColumns.has(column.column_id)}
+                                                        onChange={() => toggleColumn(column.column_id)}
+                                                    />
+                                                    <b>{column.column_id}:</b> {column.column_title}
                                                 </label>
                                             </div>
                                         ))}
-                                        <button onClick={() => clearColumns(table.table_id)}>
-                                            Clear {table.table_id} columns
-                                        </button>
+                                        {selectedInTable > 0 && (
+                                            <button className='clear-btn' onClick={() => clearColumns(table.table_id)}>
+                                                Clear {selectedInTable} selected field(s) from <i>{table.table_id}</i>
+                                            </button>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-            <button onClick={() => clearColumns()}>
-                Clear all columns
-            </button>
-            <p aria-live="polite">{selectedColumns.size} columns selected</p>
-        </section>
+                                </details>
+                            );
+                        })}
+                    </div>
+                )}
+                {selectedColumns.size > 0 && (
+                    <button className='clear-btn' onClick={() => clearColumns()}>
+                        Clear {selectedColumns.size > 0 && ` ${selectedColumns.size} selected`} field(s)
+                    </button>
+                )}
+            </section>
+        </details>
     );
-}
-
-export default AcsColumnSelector;
+};

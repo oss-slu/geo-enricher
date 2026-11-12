@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import AcsColumnSelector from '../../cmp/AcsColumnSelector';
+import AcsColumnSelector from '../../cmp/ColumnSelector';
 import { TABLE_IDS } from '../../consts';
 
 const metadata = [
