@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { TABLE_IDS, URLS } from '../consts';
 import DatasetGeoJoiner from './DatasetGeoJoiner';
-import AcsColumnSelector from './AcsColumnSelector';
-import { TABLE_IDS } from '../consts';
+import ColumnSelector from './ColumnSelector';
+import MenuBar from './MenuBar';
 
 export type SelectedAcsColumn = {
     table_id: string;
@@ -9,25 +10,21 @@ export type SelectedAcsColumn = {
 };
 
 function App() {
-    const [selectedAcsColumns, setSelectedAcsColumns] = useState<
-        SelectedAcsColumn[]
-    >([]);
+    const [selectedAcsColumns, setSelectedAcsColumns] = useState<SelectedAcsColumn[]>([]);
 
     return (
-        <>
-            <main>
-                <h1>Open Source with SLU</h1>
-
-                <AcsColumnSelector
-                    table_ids={TABLE_IDS}
-                    onSelectionChange={setSelectedAcsColumns}
-                />
-
-                <DatasetGeoJoiner
-                    selectedAcsColumns={selectedAcsColumns}
-                />
-            </main>
-        </>
+        <main>
+            <MenuBar justify='space-between' gap='0.5rem' padding='0' className='top-menu'>
+                <a href={URLS.OSS_URL} target="_blank"><img src={URLS.OSS_IMG} height='50px'></img></a>
+                <h1>Geo-Enricher</h1>
+                <div className='src'>
+                    <img src={URLS.GH_IMG} height='40px'></img>
+                    <h3>View the <a href={URLS.SRC_URL} target="_blank">Source Code</a></h3>
+                </div>
+            </MenuBar>
+            <DatasetGeoJoiner selectedAcsColumns={selectedAcsColumns} />
+            <ColumnSelector table_ids={TABLE_IDS} onSelectionChange={setSelectedAcsColumns} />
+        </main>
     );
 }
 
