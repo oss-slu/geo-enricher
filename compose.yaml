@@ -52,7 +52,6 @@ services:
                 [
                     'CMD-SHELL',
                     'psql -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${PGDATABASE}" -tAc "select 1 from acs.b02001_moe limit 1" | grep -q 1',
-                    # 'pg_isready --username "$${POSTGRES_USER}" --dbname "$${PGDATABASE}"',
                 ]
             interval: 5s
             timeout: 5s
