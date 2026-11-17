@@ -31,7 +31,7 @@ export default function UploadStep({ fileName, preview, busy, onFile }: {
                 onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
             />
             {fileName && <p><small>Selected <i>{fileName}</i></small></p>}
-            {preview && <PreviewTable preview={preview} />}
+            {preview && <PreviewTable heading='File Preview' preview={preview} />}
         </div>
     );
 }

@@ -24,7 +24,7 @@ export default function GeocodeStep({ fields, field, onField, result, busy, disa
             {result && (
                 <>
                     <p>{result.counts.matched} matched, {result.counts.unmatched} unmatched, {result.counts.invalidOrBlank} invalid or blank</p>
-                    <PreviewTable preview={{
+                    <PreviewTable heading='Geocoder results' preview={{
                         headers: result.preview.columns.map((c) => c.label),
                         rows: result.preview.rows as (string | number | boolean)[][],
                     }} />

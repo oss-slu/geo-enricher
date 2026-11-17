@@ -50,7 +50,7 @@ export default function App() {
                         <>
                             <p>{f.acs.counts.withAcs} of {f.acs.counts.input} rows have ACS data</p>
                             <PreviewTable
-                                key={f.acs.filename}
+                                heading='ACS Results'
                                 preview={{
                                     headers: f.acs.preview.columns.map((c) => c.label),
                                     rows: f.acs.preview.rows as (string | number | boolean)[][],
