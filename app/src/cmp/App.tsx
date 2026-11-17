@@ -4,6 +4,7 @@ import DatasetGeoJoiner from './DatasetGeoJoiner';
 import ColumnSelector from './ColumnSelector';
 import MenuBar from './MenuBar';
 import Enricher from './Enricher';
+import type { geocodeBlockResult } from '../types/geocoder';
 
 export type SelectedAcsColumn = {
     table_id: string;
@@ -12,9 +13,9 @@ export type SelectedAcsColumn = {
 
 function App() {
     const [selectedAcsColumns, setSelectedAcsColumns] = useState<SelectedAcsColumn[]>([]);
-    // const [enrichWith, setEnrichWith] = useState<[boolean, boolean]>([false, false]);
     const [writeGeo, setWriteGeo] = useState(false);
     const [writeAcs, setWriteAcs] = useState(false);
+    const [geoData, setGeoData] = useState<geocodeBlockResult[] | null>(null);
     
     return (
         <main>

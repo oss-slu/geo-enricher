@@ -9,6 +9,7 @@ import geocodeFile from './routes/geocodeFile';
 import datasetFile from './routes/datasetFile';
 import acsMeta from './routes/acsMeta';
 import queryACS from './routes/queryACS';
+import files from './routes/files'
 import { FILE_LIMITS } from './utils/fileLimits';
 import downloadFile from './routes/downloadFile';
 
@@ -23,13 +24,13 @@ export const ROUTES = [
     { router: downloadFile, route: '/download-file' },
     { router: acsMeta, route: '/acs-metadata' },
     { router: queryACS, route: '/query-acs' },
+    { router: files, route: '/files' },
 ];
 
 export function createApp(origin?: string) {
     const app = express();
     app.use(express.json({ limit: FILE_LIMITS.bytes }));
     app.use(cors({ origin: origin, credentials: true }));
-
     // register routes
     ROUTES.forEach((r) => app.use(r.router));
 

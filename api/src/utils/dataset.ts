@@ -548,7 +548,7 @@ export async function saveDataset(
             'FILE_TOO_LARGE',
             'Output exceeds file byte limit',
         );
-    const outputName = `${path.basename(filename, path.extname(filename)).slice(0, 150)}_${randomUUID()}.${type}`;
+    const outputName = `${path.basename(filename, path.extname(filename)).slice(0, 150)}.${type}`;
     const tempPath = await saveSessionFile(
         sessionId,
         outputName,

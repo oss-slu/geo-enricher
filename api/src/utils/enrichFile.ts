@@ -1,4 +1,3 @@
-
 import path from 'node:path';
 import { FileError } from '../errs/file';
 import { getGeocodeFromAddr } from './census';
@@ -10,16 +9,23 @@ import {
     type ReadOptions,
     type Cell,
     type Column,
+    type Dataset,
 } from './dataset';
 import { detectAddressFields } from './addressFields';
 import {
     abortError,
     enrichDataset,
+    GEOCODE_FIELDS,
     parseEnrichOptions,
     type Geocoder,
 } from './enrichDataset';
 import { FILE_LIMITS } from './fileLimits';
 import { queryACSForGeoid } from './acs';
+import {
+    baseName, indexSidecar, readSidecar,
+    resolveAddressColumn, ROW, sidecarName, uniqueColumn, withDeadline
+} from './fileHelpers';
+import { appendAcs } from './acsDataset';
 
 export type SelectedAcsColumn = {
     table_id: string;
@@ -32,6 +38,11 @@ export type FileOptions = ReadOptions & {
     fields?: unknown;
     join?: unknown;
     acsColumns?: SelectedAcsColumn[];
+    geoidField?: string;
+    geo?: boolean;
+    acs?: boolean;
+    geocodeFile?: string;
+    acsFile?: string;
 };
 
 function isDatasetCell(value: unknown): value is Cell {
@@ -44,7 +55,7 @@ function isDatasetCell(value: unknown): value is Cell {
     );
 }
 
-export function parseFileOptions(value: unknown): FileOptions {
+function parseFileOptions(value: unknown): FileOptions {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
         throw new FileError(
             400,
@@ -69,7 +80,7 @@ export function parseFileOptions(value: unknown): FileOptions {
         );
     }
 
-    for (const key of ['sheet', 'addressField']) {
+    for (const key of ['sheet', 'addressField', 'geocodeFile', 'acsFile']) {
         if (
             body[key] !== undefined &&
             (typeof body[key] !== 'string' || !body[key])
@@ -127,7 +138,229 @@ export function parseFileOptions(value: unknown): FileOptions {
     return body as FileOptions;
 }
 
+async function loadDataset(inputPath: string, options: FileOptions) {
+    const type = fileType(inputPath);
+    const dataset = readDataset(
+        await readSessionFile(options.sessionId, inputPath),
+        type,
+        options,
+    );
+    return { type, dataset };
+}
+
+export async function geocodeStep(
+    inputPath: string,
+    rawOptions: unknown,
+    signal?: AbortSignal,
+    geocoder: Geocoder = (address, signal) => getGeocodeFromAddr(address, { signal }),
+) {
+    const options = parseFileOptions(rawOptions);
+
+    return withDeadline(signal, (sig, check) =>
+        withSession(options.sessionId, async () => {
+            check();
+            const { dataset } = await loadDataset(inputPath, options);
+            check();
+
+            const addressId = resolveAddressColumn(dataset, options.addressField);
+
+            const enriched = await enrichDataset(
+                dataset,
+                addressId,
+                { fields: [...GEOCODE_FIELDS], join: 'left' },
+                geocoder,
+                sig,
+            );
+            check();
+
+            // Keep only the new columns, relabeled to the raw field names.
+            const offset = dataset.columns.length;
+            const sidecar: Dataset = {
+                columns: [
+                    { id: ROW, label: ROW },
+                    ...GEOCODE_FIELDS.map((f) => ({ id: f, label: f })),
+                ],
+                rows: enriched.dataset.rows.map((row, i) => [i, ...row.slice(offset)]),
+            };
+
+            const saved = await saveDataset(
+                options.sessionId,
+                sidecarName(inputPath, 'geocode'),
+                sidecar,
+                'csv',
+                sig,
+            );
+
+            return {
+                ...saved,
+                addressField: addressId,
+                counts: enriched.counts,
+                // Original columns + geocode columns, first 100 rows, for display.
+                preview: {
+                    columns: enriched.dataset.columns,
+                    rows: enriched.dataset.rows.slice(0, 100),
+                },
+            };
+        }),
+    );
+}
+
+export async function acsStep(
+    inputPath: string,
+    rawOptions: unknown,
+    signal?: AbortSignal,
+) {
+    const options = parseFileOptions(rawOptions);
+
+    const acsColumns = options.acsColumns ?? [];
+
+    if (!acsColumns.length) {
+        throw new FileError(400, 'INVALID_ACS_COLUMNS', 'acsColumns must be nonempty');
+    }
+
+    return withDeadline(signal, (sig, check) =>
+        withSession(options.sessionId, async () => {
+            check();
+
+            if (!options.geocodeFile) {
+                throw new FileError(400, 'INVALID_OPTIONS', 'geocodeFile is required');
+            }
+            const geo = await readSidecar(options.sessionId, options.geocodeFile);
+
+            // CSV readers may coerce GEOIDs to numbers and drop leading zeros.
+            const geoIdx = geo.columns.findIndex((c) => c.label === 'blockGeoid');
+            if (geoIdx < 0) {
+                throw new FileError(422, 'GEOID_FIELD_NOT_FOUND', 'Geocode file has no blockGeoid');
+            }
+            geo.columns.push({ id: 'blockGroupGeoid', label: 'blockGroupGeoid' });
+            geo.rows = geo.rows.map((row) => {
+                const v = row[geoIdx];
+                const bg = v === null || v === '' ? null : String(v).padStart(15, '0').slice(0, 12);
+                return [...row, bg];
+
+            });
+
+            const result = await appendAcs(geo, 'blockGeoid', acsColumns, check);
+
+            // Keep _row and the appended ACS columns only.
+            const keep = [
+                0,
+                ...result.newColumns.map((_, i) => geo.columns.length + i),
+            ];
+            const sidecar: Dataset = {
+                columns: keep.map((i) => result.dataset.columns[i]),
+                rows: result.dataset.rows.map((row) => keep.map((i) => row[i])),
+            };
+
+            const saved = await saveDataset(
+                options.sessionId,
+                sidecarName(inputPath, 'acs'),
+                sidecar,
+                'csv',
+                sig,
+            );
+
+            return {
+                ...saved,
+                counts: result.counts,
+                preview: {
+                    columns: sidecar.columns.slice(1),
+                    rows: sidecar.rows.slice(0, 100).map((r) => r.slice(1)),
+                },
+            };
+        }),
+    );
+}
+
 export async function enrichFile(
+    inputPath: string,
+    rawOptions: unknown,
+    signal?: AbortSignal,
+) {
+    const options = parseFileOptions(rawOptions);
+    const enrichOpts = parseEnrichOptions(options);
+
+    if (!options.geo && !options.acs) {
+        throw new FileError(400, 'NOTHING_SELECTED', 'Select geocode data, ACS data, or both');
+    }
+
+    return withDeadline(signal, (sig, check) =>
+        withSession(options.sessionId, async () => {
+            check();
+            const { type, dataset } = await loadDataset(inputPath, options);
+            check();
+
+            const columns: Column[] = [...dataset.columns];
+            const out: Cell[][] = dataset.rows.map((r) => [...r]);
+            let matched: boolean[] | null = null;
+            const added = { geo: [] as Column[], acs: [] as Column[] };
+
+            const merge = (
+                sc: ReturnType<typeof indexSidecar>,
+                pick: string[] | null,
+                prefix: string,
+                bucket: Column[],
+            ) => {
+                const picks = sc.columns
+                    .map((c, i) => i)
+                    .filter((i) => !pick || pick.includes(sc.columns[i].label));
+
+                const newCols = picks.map((i) => uniqueColumn(columns, prefix + sc.columns[i].label));
+                columns.push(...newCols);
+                bucket.push(...newCols);
+
+                out.forEach((row, r) => {
+                    const vals = sc.byRow.get(r);
+                    row.push(...picks.map((i) => vals?.[i] ?? null));
+                });
+            };
+
+            if (options.geo) {
+                if (!options.geocodeFile) throw new FileError(400, 'INVALID_OPTIONS', 'geocodeFile is required when geo is true');
+                const sc = indexSidecar(await readSidecar(options.sessionId, options.geocodeFile));
+                const blockIdx = sc.columns.findIndex((c) => c.label === 'blockGeoid');
+                matched = out.map((_, r) => sc.byRow.get(r)?.[blockIdx] != null);
+                merge(sc, enrichOpts.fields, 'geocode_', added.geo);
+            }
+
+            if (options.acs) {
+                if (!options.acsFile) throw new FileError(400, 'INVALID_OPTIONS', 'acsFile is required when acs is true');
+                const sc = indexSidecar(await readSidecar(options.sessionId, options.acsFile));
+                merge(sc, null, '', added.acs);
+            }
+
+            if (columns.length > FILE_LIMITS.columns) {
+                throw new FileError(413, 'TABLE_TOO_LARGE', 'Enriched dataset exceeds column limit');
+            }
+            check();
+
+            // Inner join drops rows the geocoder couldn't match.
+            const rows =
+                options.geo && enrichOpts.join === 'inner'
+                    ? out.filter((_, r) => matched![r])
+                    : out;
+
+            const saved = await saveDataset(
+                options.sessionId,
+                `${baseName(inputPath)}_enriched.${type}`,
+                { columns, rows },
+                type,
+                sig,
+            );
+
+            return {
+                ...saved,
+                counts: { input: dataset.rows.length, output: rows.length },
+                added: {
+                    geocode: added.geo.map((c) => saved.columnMapping.find((m) => m.id === c.id)?.output ?? c.label),
+                    acs: added.acs.map((c) => saved.columnMapping.find((m) => m.id === c.id)?.output ?? c.label),
+                },
+            };
+        }),
+    );
+}
+
+export async function oldenrichFile(
     inputPath: string,
     rawOptions: unknown,
     signal?: AbortSignal,
