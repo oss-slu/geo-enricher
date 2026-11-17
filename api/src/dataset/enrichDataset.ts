@@ -279,7 +279,7 @@ export async function enrichDataset(
     );
 
     const geocodeColumns: Column[] = options.fields.map((field) => {
-        const base = `geocode_${field}`;
+        const base = field as string;
 
         let label = base;
         let id = base;
