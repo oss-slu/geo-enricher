@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { FileError } from '../errs/file';
-import { fileType, saveDataset, validateDataset } from '../utils/dataset';
+import { fileType, saveDataset, validateDataset } from '../dataset/dataset';
 import { validateSessionId } from '../utils/storage';
 import { fileResponseError } from '../utils/fileResponse';
 

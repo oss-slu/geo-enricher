@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import { FileError } from '../errs/file';
-import { geocodeStep, acsStep, enrichFile } from '../utils/enrichFile';
+import { geoSidecar, acsSidecar } from '../dataset/sidecars';
+import { enrichFile } from '../dataset/enrichFile';
 
 const router = express.Router();
 router.use(express.json({ limit: '1mb' })); // bodies are only options now, so keep this small
@@ -46,8 +47,8 @@ function fileRoute(step: Step) {
     };
 }
 
-router.post('/files/geocode', fileRoute((p, o, s) => geocodeStep(p, o, s)));
-router.post('/files/acs', fileRoute((p, o, s) => acsStep(p, o, s)));
+router.post('/files/geocode', fileRoute((p, o, s) => geoSidecar(p, o, s)));
+router.post('/files/acs', fileRoute((p, o, s) => acsSidecar(p, o, s)));
 router.post('/files/enrich', fileRoute((p, o, s) => enrichFile(p, o, s)));
 
 router.use((req, res) => {

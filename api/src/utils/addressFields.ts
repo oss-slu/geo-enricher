@@ -3,7 +3,7 @@ import {
     readDatasetFile,
     type Dataset,
     type ReadOptions,
-} from './dataset';
+} from '../dataset/dataset';
 
 export function detectAddressFields(dataset: Dataset): string[] {
     // Bounded sampling tolerates blank first rows without applying suggested corrections.

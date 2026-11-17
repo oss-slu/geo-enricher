@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { FileError } from '../errs/file';
 import { FILE_LIMITS } from './fileLimits';
-import { abortError, GEOCODE_FIELDS} from './enrichDataset';
+import { abortError } from '../dataset/enrichDataset';
 import { detectAddressFields } from './addressFields';
-import { readDataset, type Cell, type Column, type Dataset } from './dataset';
+import { readDataset, type Cell, type Column, type Dataset } from '../dataset/dataset';
 import { readSessionFile } from './storage';
 
 // The timer / abort / deadline boilerplate from enrichFile, written once.

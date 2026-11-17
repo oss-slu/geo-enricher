@@ -5,7 +5,6 @@ import upload from './routes/upload';
 import geocode from './routes/geocode';
 import dbHealth from './routes/dbHealth';
 import addressFields from './routes/addressFields';
-import geocodeFile from './routes/geocodeFile';
 import datasetFile from './routes/datasetFile';
 import acsMeta from './routes/acsMeta';
 import queryACS from './routes/queryACS';
@@ -19,7 +18,6 @@ export const ROUTES = [
     { router: geocode, route: '/geocode' },
     { router: dbHealth, route: '/db-health' },
     { router: addressFields, route: '/address-fields' },
-    { router: geocodeFile, route: '/geocode-file' },
     { router: datasetFile, route: '/dataset-file' },
     { router: downloadFile, route: '/download-file' },
     { router: acsMeta, route: '/acs-metadata' },

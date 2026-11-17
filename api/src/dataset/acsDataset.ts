@@ -1,9 +1,9 @@
 import { FileError } from '../errs/file';
-import { FILE_LIMITS } from './fileLimits';
-import { queryACSForGeoid } from './acs';
-import { resolveColumn } from './fileHelpers';
+import { FILE_LIMITS } from '../utils/fileLimits';
+import { queryACSForGeoid } from '../utils/acs';
+import { resolveColumn } from '../utils/fileHelpers';
 import type { Dataset, Cell, Column } from './dataset';
-import type { SelectedAcsColumn } from './enrichFile';
+import type { SelectedAcsColumn } from '../utils/acs';
 
 const acsKey = (s: SelectedAcsColumn) =>
     `${s.table_id.toLowerCase()}_${s.column_id.toLowerCase()}`;

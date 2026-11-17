@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import type { geocodeBlockResult } from '../../types/census';
-import { enrichDataset, type Geocoder } from '../../utils/enrichDataset';
-import type { Dataset } from '../../utils/dataset';
+import { enrichDataset, type Geocoder } from '../../dataset/enrichDataset';
+import type { Dataset } from '../../dataset/dataset';
 import { FILE_LIMITS } from '../../utils/fileLimits';
 
 const a = '123 Main St, Saint Louis, MO 63103';

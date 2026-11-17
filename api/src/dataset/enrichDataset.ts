@@ -1,8 +1,8 @@
 
 import type { geocodeBlockResult } from '../types/census';
 import { FileError } from '../errs/file';
-import { validateAddress } from './validateAddress';
-import { FILE_LIMITS } from './fileLimits';
+import { validateAddress } from '../utils/validateAddress';
+import { FILE_LIMITS } from '../utils/fileLimits';
 import { validateDataset, type Dataset, type Column } from './dataset';
 
 export const GEOCODE_FIELDS = [
