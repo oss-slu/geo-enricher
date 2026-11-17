@@ -14,7 +14,7 @@ const CONTENT_TYPES: Record<string, string> = {
     xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
-router.get('/download-file', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const sessionId = req.query.sessionId;
         const filename = req.query.filename;
@@ -63,7 +63,7 @@ router.get('/download-file', async (req, res) => {
     }
 });
 
-router.all('/download-file', (_req, res) => {
+router.all('/', (_req, res) => {
     res.setHeader('Allow', 'GET');
     res.status(405).json({
         success: false,

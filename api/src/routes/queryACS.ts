@@ -201,7 +201,7 @@ const handleQueryACS: RequestHandler = async (req, res) => {
     }
 };
 
-router.get('/query-acs', handleQueryACS)
-router.post('/query-acs', handleQueryACS);
+router.get('/', handleQueryACS)
+router.post('/', handleQueryACS);
 
 export default router;

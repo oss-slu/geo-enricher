@@ -47,9 +47,9 @@ function fileRoute(step: Step) {
     };
 }
 
-router.post('/files/geocode', fileRoute((p, o, s) => geoSidecar(p, o, s)));
-router.post('/files/acs', fileRoute((p, o, s) => acsSidecar(p, o, s)));
-router.post('/files/enrich', fileRoute((p, o, s) => enrichFile(p, o, s)));
+router.post('/geocode', fileRoute((p, o, s) => geoSidecar(p, o, s)));
+router.post('/acs', fileRoute((p, o, s) => acsSidecar(p, o, s)));
+router.post('/enrich', fileRoute((p, o, s) => enrichFile(p, o, s)));
 
 router.use((req, res) => {
     console.log('router fallthrough:', req.method, req.url, req.baseUrl);

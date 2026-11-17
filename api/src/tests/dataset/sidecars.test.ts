@@ -134,14 +134,14 @@ describe('geoSidecar', () => {
         expect(res.preview.columns.map((c) => c.label)).toEqual([
             'identifier',
             'address',
-            'geocode_matchedAddress',
-            'geocode_latitude',
-            'geocode_longitude',
-            'geocode_blockGeoid',
-            'geocode_state',
-            'geocode_county',
-            'geocode_tract',
-            'geocode_blkgrp',
+            'matchedAddress',
+            'latitude',
+            'longitude',
+            'blockGeoid',
+            'state',
+            'county',
+            'tract',
+            'blkgrp',
         ]);
         expect(res.preview.rows).toHaveLength(4);
     });

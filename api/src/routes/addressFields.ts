@@ -6,7 +6,7 @@ import { FileError } from '../errs/file';
 import { fileResponseError } from '../utils/fileResponse';
 
 const router = Router();
-router.get('/address-fields', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const { path, sessionId, sheet, hasHeaders } = req.query;
         if (typeof path !== 'string' || !path || typeof sessionId !== 'string')

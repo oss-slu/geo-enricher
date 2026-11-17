@@ -20,7 +20,7 @@ const table: Dataset = {
     columns: [
         { id: 'name', label: 'name' },
         { id: 'address', label: 'address' },
-        { id: 'old', label: 'geocode_state' },
+        { id: 'old', label: 'state' },
     ],
     rows: [
         ['first', a, 'keep'],
@@ -76,7 +76,7 @@ it.each(['left', 'inner'] as const)(
         ]);
         if (join === 'left')
             expect(enriched.dataset.rows[3].slice(-2)).toEqual([null, null]);
-        expect(enriched.geocodeMapping[0].output).toBe('geocode_state_2');
+        expect(enriched.geocodeMapping[0].output).toBe('state_2');
     },
 );
 

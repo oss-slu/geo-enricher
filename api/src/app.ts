@@ -30,7 +30,7 @@ export function createApp(origin?: string) {
     app.use(express.json({ limit: FILE_LIMITS.bytes }));
     app.use(cors({ origin: origin, credentials: true }));
     // register routes
-    ROUTES.forEach((r) => app.use(r.router));
+    ROUTES.forEach((r) => app.use(r.route, r.router));
 
     const bodyError: ErrorRequestHandler = (err, req, res, next) => {
         if (req.path !== '/geocode-file' && req.path !== '/dataset-file')

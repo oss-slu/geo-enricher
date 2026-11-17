@@ -37,12 +37,12 @@ const upload = multer({
     },
 });
 
-router.get('/upload', (_req, res) => {
+router.get('/', (_req, res) => {
     res.status(405).json({ error: 'Method Not Allowed' });
 });
 
 router.post(
-    '/upload',
+    '/',
     fileOpLimiter,
     upload.single('file'),
     async (req, res) => {
@@ -74,7 +74,7 @@ router.post(
     },
 );
 
-router.delete('/upload/:sessionId', fileOpLimiter, async (req, res) => {
+router.delete('/:sessionId', fileOpLimiter, async (req, res) => {
     const sessionId = req.params.sessionId as string;
 
     const uuidRegex =

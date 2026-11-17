@@ -3,7 +3,7 @@ import { query } from '../db/connect';
 
 const router = Router();
 
-router.get('/acs-metadata', async (_req, res) => {
+router.get('/', async (_req, res) => {
 
     const rawTables = _req.query.tables;
     const tables = (Array.isArray(rawTables) ? rawTables : [rawTables])
