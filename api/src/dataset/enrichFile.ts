@@ -43,7 +43,7 @@ export async function enrichFile(
                 bucket: Column[],
             ) => {
                 const picks = sc.columns
-                    .map((c, i) => i)
+                    .map((_, i) => i)
                     .filter((i) => !pick || pick.includes(sc.columns[i].label));
 
                 const newCols = picks.map((i) => uniqueColumn(columns, prefix + sc.columns[i].label));
