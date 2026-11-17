@@ -3,6 +3,7 @@ import { TABLE_IDS, URLS } from '../consts';
 import DatasetGeoJoiner from './DatasetGeoJoiner';
 import ColumnSelector from './ColumnSelector';
 import MenuBar from './MenuBar';
+import Enricher from './Enricher';
 
 export type SelectedAcsColumn = {
     table_id: string;
@@ -11,7 +12,10 @@ export type SelectedAcsColumn = {
 
 function App() {
     const [selectedAcsColumns, setSelectedAcsColumns] = useState<SelectedAcsColumn[]>([]);
-
+    // const [enrichWith, setEnrichWith] = useState<[boolean, boolean]>([false, false]);
+    const [writeGeo, setWriteGeo] = useState(false);
+    const [writeAcs, setWriteAcs] = useState(false);
+    
     return (
         <main>
             <MenuBar justify='space-between' gap='0.5rem' padding='0' className='top-menu'>
@@ -24,6 +28,7 @@ function App() {
             </MenuBar>
             <DatasetGeoJoiner selectedAcsColumns={selectedAcsColumns} />
             <ColumnSelector table_ids={TABLE_IDS} onSelectionChange={setSelectedAcsColumns} />
+            <Enricher writeGeo={writeGeo} writeAcs={writeAcs} onGeoChange={setWriteGeo} onAcsChange={setWriteAcs}/>
         </main>
     );
 }
