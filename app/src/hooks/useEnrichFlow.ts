@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import * as api from '../api/files';
 import { parsePreview } from '../utils/parsePreview';
 import type { PreviewData } from '../cmp/PreviewTable';
@@ -19,9 +19,15 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
 
     const [busy, setBusy] = useState<Step | null>(null);
     const [error, setError] = useState('');
+    // Synchronous mirror of busy, so a second action in the same tick is also refused.
+    const busyRef = useRef<Step | null>(null);
 
     // Wraps every action: sets busy, clears the error, and reports failures.
+    // Only one action runs at a time; a slower one could otherwise overwrite
+    // results from an action that started after it.
     async function run(step: Step, fn: () => Promise<void>) {
+        if (busyRef.current) return;
+        busyRef.current = step;
         setBusy(step);
         setError('');
         try {
@@ -29,11 +35,13 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
         } finally {
+            busyRef.current = null;
             setBusy(null);
         }
     }
 
     async function chooseFile(file: File) {
+        if (busyRef.current) return;
         setUpload(null); setPreview(null); setAddressFields([]); setAddressField('');
         setGeocode(null); setAcs(null); setEnriched(null);
         setFileName(file.name);
@@ -52,6 +60,13 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
             setAddressFields(fields);
             setAddressField(fields[0] ?? '');
         });
+    }
+
+    // Results built from another address field no longer apply.
+    function chooseAddressField(field: string) {
+        if (busyRef.current || field === addressField) return;
+        setAddressField(field);
+        setGeocode(null); setAcs(null); setEnriched(null);
     }
 
     const geocodeStep = () =>
@@ -89,7 +104,7 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
     const acsStale = !!acs && JSON.stringify(acsUsed) !== JSON.stringify(selectedAcsColumns);
 
     return {
-        upload, fileName, preview, addressFields, addressField, setAddressField,
+        upload, fileName, preview, addressFields, addressField, setAddressField: chooseAddressField,
         geocode, acs, acsStale, enriched, busy, error,
         chooseFile, geocodeStep, acsStep, enrichStep,
     };

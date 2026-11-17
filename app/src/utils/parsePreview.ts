@@ -21,7 +21,10 @@ export async function parsePreview(file: File): Promise<PreviewData> {
     if (!sheet) throw new Error('The selected file has no readable worksheet.');
 
     const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' });
-    if (matrix.length === 0) throw new Error('The selected file contains no data.');
+    // An empty CSV parses as a single blank cell rather than no rows.
+    if (matrix.every((row) => row.every((v) => v === ''))) {
+        throw new Error('The selected file contains no data.');
+    }
 
     const headers = matrix[0].map((v, i) => String(v || `Column ${i + 1}`));
     const rows = matrix.slice(1).map((row) =>

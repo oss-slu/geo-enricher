@@ -24,13 +24,14 @@ export default function App() {
                 </div>
             </MenuBar>
 
-            <UploadStep fileName={f.fileName} preview={f.preview} busy={f.busy === 'upload'} onFile={f.chooseFile} />
+            <UploadStep fileName={f.fileName} preview={f.preview} busy={f.busy !== null} onFile={f.chooseFile} />
             {f.error && <p role="alert">{f.error}</p>}
 
             {f.upload && (
                 <GeocodeStep
                     fields={f.addressFields} field={f.addressField} onField={f.setAddressField}
-                    result={f.geocode} busy={f.busy === 'geocode'} onRun={() => f.geocodeStep()}
+                    result={f.geocode} busy={f.busy === 'geocode'} disabled={f.busy !== null}
+                    onRun={() => f.geocodeStep()}
                 />
 
             )}
@@ -59,7 +60,7 @@ export default function App() {
                     )}
                     <EnrichStep
                         geocodeDone={!!f.geocode} acsDone={!!f.acs} acsStale={f.acsStale}
-                        busy={f.busy === 'enrich'} onEnrich={f.enrichStep}
+                        busy={f.busy === 'enrich'} disabled={f.busy !== null} onEnrich={f.enrichStep}
                     />
                 </>
             )}

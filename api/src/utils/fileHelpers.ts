@@ -93,13 +93,30 @@ export async function readSidecar(sessionId: string, filePath: string): Promise<
     return ds;
 }
 
+// Sidecar columns that are codes, not quantities; keep their exact text.
+const SIDECAR_TEXT = new Set([
+    'matchedAddress', 'blockGeoid', 'blockGroupGeoid',
+    'state', 'county', 'tract', 'blkgrp',
+]);
+
+// Sidecars round-trip through CSV, which reads every cell back as text.
+// Restore blanks to null and numbers to numbers so outputs match the originals.
+function sidecarCell(label: string, v: Cell): Cell {
+    if (v === '') return null;
+    if (typeof v !== 'string' || SIDECAR_TEXT.has(label)) return v;
+    const n = Number(v);
+    return v.trim() !== '' && String(n) === v ? n : v;
+}
+
 // Index sidecar rows by original row number, dropping the _row column.
 export function indexSidecar(ds: Dataset) {
     const keep = ds.columns.map((_, i) => i).filter((i) => !ds.columns[i].label.startsWith('_'));
     const byRow = new Map<number, Cell[]>();
     for (const row of ds.rows) {
         const n = Number(row[0]);
-        if (Number.isInteger(n)) byRow.set(n, keep.map((i) => row[i]));
+        if (Number.isInteger(n)) {
+            byRow.set(n, keep.map((i) => sidecarCell(ds.columns[i].label, row[i])));
+        }
     }
     return { columns: keep.map((i) => ds.columns[i]), byRow };
 }

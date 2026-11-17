@@ -2,21 +2,22 @@
 import PreviewTable from './PreviewTable';
 import type { GeocodeResult } from '../api/files';
 
-export default function GeocodeStep({ fields, field, onField, result, busy, onRun }: {
+export default function GeocodeStep({ fields, field, onField, result, busy, disabled = busy, onRun }: {
     fields: string[];
     field: string;
     onField: (f: string) => void;
     result: GeocodeResult | null;
     busy: boolean;
+    disabled?: boolean; // true while any step is running
     onRun: () => void;
 }) {
     return (
         <div>
             <label htmlFor="join-field"><b>Potential address field(s): </b></label>
-            <select id="join-field" value={field} onChange={(e) => onField(e.target.value)}>
+            <select id="join-field" value={field} disabled={disabled} onChange={(e) => onField(e.target.value)}>
                 {fields.map((f) => <option key={f}>{f}</option>)}
             </select>
-            <button type="button" disabled={!field || busy} onClick={onRun}>
+            <button type="button" disabled={!field || disabled} onClick={onRun}>
                 {busy ? 'Geocoding…' : 'Geocode addresses'}
             </button>
 

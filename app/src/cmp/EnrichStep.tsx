@@ -1,11 +1,12 @@
 // EnrichStep.tsx
 import { useState } from 'react';
 
-export default function EnrichStep({ geocodeDone, acsDone, acsStale, busy, onEnrich }: {
+export default function EnrichStep({ geocodeDone, acsDone, acsStale, busy, disabled = busy, onEnrich }: {
     geocodeDone: boolean;
     acsDone: boolean;
     acsStale: boolean;
     busy: boolean;
+    disabled?: boolean; // true while any step is running
     onEnrich: (opts: { geo: boolean; acs: boolean }) => void;
 }) {
     const [geo, setGeo] = useState(true);
@@ -28,7 +29,7 @@ export default function EnrichStep({ geocodeDone, acsDone, acsStale, busy, onEnr
                     ACS data
                 </label>
             </div>
-            <button type="button" disabled={busy || (!useGeo && !useAcs)}
+            <button type="button" disabled={disabled || (!useGeo && !useAcs)}
                     onClick={() => onEnrich({ geo: useGeo, acs: useAcs })}>
                 {busy ? 'Enriching…' : 'Enrich and download'}
             </button>
