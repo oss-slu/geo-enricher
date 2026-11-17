@@ -61,7 +61,7 @@ export async function enrichFile(
                 const sc = indexSidecar(await readSidecar(options.sessionId, options.geocodeFile));
                 const blockIdx = sc.columns.findIndex((c) => c.label === 'blockGeoid');
                 matched = out.map((_, r) => sc.byRow.get(r)?.[blockIdx] != null);
-                merge(sc, enrichOpts.fields, 'geocode_', added.geo);
+                merge(sc, enrichOpts.fields, '', added.geo);
             }
 
             if (options.acs) {
@@ -87,6 +87,7 @@ export async function enrichFile(
                 { columns, rows },
                 type,
                 sig,
+                {overwrite: true},
             );
 
             return {

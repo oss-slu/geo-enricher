@@ -6,6 +6,7 @@ import { saveDataset, type Dataset } from './dataset';
 import { enrichDataset, GEOCODE_FIELDS, type Geocoder, } from './enrichDataset';
 import {
     resolveAddressColumn, ROW, sidecarName, withDeadline, readSidecar,
+    ADDRESS,
 } from '../utils/fileHelpers';
 
 import { loadDataset, parseFileOptions } from './shared';
@@ -25,7 +26,7 @@ export async function geoSidecar(
             check();
 
             const addressId = resolveAddressColumn(dataset, options.addressField);
-
+            const addressIdx = dataset.columns.findIndex((c) => c.id === addressId);
             const enriched = await enrichDataset(
                 dataset,
                 addressId,
@@ -40,9 +41,10 @@ export async function geoSidecar(
             const sidecar: Dataset = {
                 columns: [
                     { id: ROW, label: ROW },
+                    { id: ADDRESS, label: ADDRESS },
                     ...GEOCODE_FIELDS.map((f) => ({ id: f, label: f })),
                 ],
-                rows: enriched.dataset.rows.map((row, i) => [i, ...row.slice(offset)]),
+                rows: enriched.dataset.rows.map((row, i) => [i, row[addressIdx] ?? null, ...row.slice(offset)]),
             };
 
             const saved = await saveDataset(
@@ -51,6 +53,7 @@ export async function geoSidecar(
                 sidecar,
                 'csv',
                 sig,
+                { overwrite: true },
             );
 
             return {
@@ -73,7 +76,7 @@ export async function acsSidecar(
     signal?: AbortSignal,
 ) {
     const options = parseFileOptions(rawOptions);
-
+    
     const acsColumns = options.acsColumns ?? [];
 
     if (!acsColumns.length) {
@@ -88,7 +91,7 @@ export async function acsSidecar(
                 throw new FileError(400, 'INVALID_OPTIONS', 'geocodeFile is required');
             }
             const geo = await readSidecar(options.sessionId, options.geocodeFile);
-
+            const addressIdx = geo.columns.findIndex((c) => c.label === ADDRESS)
             // CSV readers may coerce GEOIDs to numbers and drop leading zeros.
             const geoIdx = geo.columns.findIndex((c) => c.label === 'blockGeoid');
             if (geoIdx < 0) {
@@ -104,9 +107,10 @@ export async function acsSidecar(
 
             const result = await appendAcs(geo, 'blockGeoid', acsColumns, check);
 
-            // Keep _row and the appended ACS columns only.
+            // Keep _row, _address, and the appended ACS columns only.
             const keep = [
                 0,
+                ...(addressIdx >= 0 ? [addressIdx] : []),
                 ...result.newColumns.map((_, i) => geo.columns.length + i),
             ];
             const sidecar: Dataset = {
@@ -120,6 +124,7 @@ export async function acsSidecar(
                 sidecar,
                 'csv',
                 sig,
+                { overwrite: true },
             );
 
             return {

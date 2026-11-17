@@ -79,6 +79,7 @@ export function resolveAddressColumn(dataset: Dataset, addressField?: string): s
 export const baseName = (p: string) => path.basename(p, path.extname(p));
 
 export const ROW = '_row';
+export const ADDRESS = '_address';
 
 export const sidecarName = (inputPath: string, kind: 'geocode' | 'acs') =>
     `${kind}_${baseName(inputPath)}.csv`;
@@ -94,12 +95,13 @@ export async function readSidecar(sessionId: string, filePath: string): Promise<
 
 // Index sidecar rows by original row number, dropping the _row column.
 export function indexSidecar(ds: Dataset) {
+    const keep = ds.columns.map((_, i) => i).filter((i) => !ds.columns[i].label.startsWith('_'));
     const byRow = new Map<number, Cell[]>();
     for (const row of ds.rows) {
         const n = Number(row[0]);
-        if (Number.isInteger(n)) byRow.set(n, row.slice(1));
+        if (Number.isInteger(n)) byRow.set(n, keep.map((i) => row[i]));
     }
-    return { columns: ds.columns.slice(1), byRow };
+    return { columns: keep.map((i) => ds.columns[i]), byRow };
 }
 
 export function uniqueColumn(existing: Column[], label: string): Column {

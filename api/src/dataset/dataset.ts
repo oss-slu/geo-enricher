@@ -532,6 +532,7 @@ export async function saveDataset(
     dataset: Dataset,
     type: FileType,
     signal?: AbortSignal,
+    options: { overwrite?: boolean } = {},
 ) {
     validateFilename(filename);
     if (fileType(filename) !== type)
@@ -553,6 +554,7 @@ export async function saveDataset(
         outputName,
         buffer,
         signal,
+        options.overwrite ?? false,
     );
     return {
         sessionId,
