@@ -6,8 +6,8 @@ import type { requestOptions } from '../types/http';
 
 
 function getExpectedLocation(address: string) {
-    const match = address.match(
-        /,\s*([A-Za-z]{2})\s*,?\s*(\d{5})(?:-\d{4})?\s*$/u,
+    const match = address.trim().match(
+        /,\s*([A-Za-z]{2})\s*(?:,\s*)?(\d{5})(?:-\d{4})?$/u,
     );
 
     if (!match) return null;
