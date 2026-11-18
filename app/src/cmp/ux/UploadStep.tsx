@@ -45,7 +45,7 @@ export default function UploadStep({ fileName, preview, busy, onFile, onAddress 
                     onFile(e.target.files[0]);
                 }}
             />
-            {fileName && <p><small>Selected <i>{fileName}</i></small></p>}
+            {fileName && <p><small><i>Uploaded {fileName}</i></small></p>}
 
             <form onSubmit={onSubmit}>
                 <label htmlFor='single-addr' className='upload-msg'>...or enter a single address</label>

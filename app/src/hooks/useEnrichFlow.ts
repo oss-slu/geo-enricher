@@ -24,14 +24,15 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
 
     // Wraps every action: sets busy, clears the error, and reports failures.
     // Only one action runs at a time; a slower one could otherwise overwrite
-    // results from an action that started after it.
-    async function run(step: Step, fn: () => Promise<void>) {
+    // results from an action that started after it. Resolves to fn's result,
+    // or undefined if the action was refused or failed.
+    async function run<T>(step: Step, fn: () => Promise<T>): Promise<T | undefined> {
         if (busyRef.current) return;
         busyRef.current = step;
         setBusy(step);
         setError('');
         try {
-            await fn();
+            return await fn();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
         } finally {
@@ -52,14 +53,18 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
             return;
         }
 
-        await run('upload', async () => {
+        const ready = await run('upload', async () => {
             setPreview(await parsePreview(file));
             const info = await api.uploadFile(file);
             setUpload(info);
             const fields = await api.fetchAddressFields(info);
             setAddressFields(fields);
             setAddressField(fields[0] ?? '');
+            return { info, field: fields[0] ?? '' };
         });
+        // Geocode straight away when an address field was detected. State from
+        // the upload isn't visible to this closure yet, so pass it explicitly.
+        if (ready?.field) await run('geocode', () => geocodeWith(ready.info, ready.field));
     }
 
     // A typed address is handled as a one-row CSV with a single address column.
@@ -77,13 +82,16 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
         setGeocode(null); setAcs(null); setEnriched(null);
     }
 
+    async function geocodeWith(info: api.UploadInfo, field: string) {
+        setGeocode(await api.runGeocode(info, field));
+        setAcs(null);        // downstream results are now stale
+        setEnriched(null);
+    }
+
     const geocodeStep = () =>
         run('geocode', async () => {
             if (!upload || !addressField) throw new Error('Select an address field first.');
-            const result = await api.runGeocode(upload, addressField);
-            setGeocode(result);
-            setAcs(null);        // downstream results are now stale
-            setEnriched(null);
+            await geocodeWith(upload, addressField);
         });
 
     const acsStep = () =>

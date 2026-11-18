@@ -116,10 +116,7 @@ describe('App', () => {
 
         const fetchAcs = screen.getByRole('button', { name: 'Fetch ACS Data' });
         const enrich = screen.getByRole('button', { name: 'Enrich and download' });
-        expect(fetchAcs).toBeDisabled();
-        expect(enrich).toBeDisabled();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Geocode addresses' }));
+        // Geocoding starts on its own once an address field is detected.
         expect(
             await screen.findByText('1 matched, 1 unmatched, 0 invalid or blank'),
         ).toBeInTheDocument();
@@ -152,7 +149,6 @@ describe('App', () => {
     it('warns when the ACS selection changes after a fetch', async () => {
         render(<App />);
         await uploadFile();
-        fireEvent.click(screen.getByRole('button', { name: 'Geocode addresses' }));
         await screen.findByText(/1 matched/);
         const column = await screen.findByRole('checkbox', { name: /B02001001/ });
         fireEvent.click(column);
@@ -169,7 +165,6 @@ describe('App', () => {
             json({ error: { code: 'NO_ADDRESS_FIELDS', message: 'No address column' } }, 422);
         render(<App />);
         await uploadFile();
-        fireEvent.click(screen.getByRole('button', { name: 'Geocode addresses' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('No address column');
     });
 
@@ -179,7 +174,6 @@ describe('App', () => {
         render(<App />);
         await uploadFile();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Geocode addresses' }));
         expect(await screen.findByRole('button', { name: 'Geocoding…' })).toBeDisabled();
         expect(screen.getByLabelText(/Potential address field/)).toBeDisabled();
         expect(screen.getByLabelText('Upload a CSV or Excel file...')).toBeDisabled();
@@ -188,5 +182,18 @@ describe('App', () => {
         await act(async () => finish(json(geocode)));
         expect(await screen.findByRole('button', { name: 'Geocode addresses' })).toBeEnabled();
         expect(screen.getByLabelText('Upload a CSV or Excel file...')).toBeEnabled();
+    });
+
+    it('re-geocodes from the button after a failed automatic run', async () => {
+        geocodeResponse = async () =>
+            json({ error: { code: 'NO_ADDRESS_FIELDS', message: 'No address column' } }, 422);
+        render(<App />);
+        await uploadFile();
+        await screen.findByRole('alert');
+
+        geocodeResponse = async () => json(geocode);
+        fireEvent.click(screen.getByRole('button', { name: 'Geocode addresses' }));
+        expect(await screen.findByText(/1 matched/)).toBeInTheDocument();
+        expect(calls('/api/files/geocode')).toHaveLength(2);
     });
 });

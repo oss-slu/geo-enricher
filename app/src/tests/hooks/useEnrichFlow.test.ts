@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../../api/files';
 import { useEnrichFlow } from '../../hooks/useEnrichFlow';
@@ -63,11 +63,10 @@ function setup(selected = columns) {
     });
 }
 
-// Upload a file and run any requested steps.
-async function ready(steps: ('geocode' | 'acs')[] = [], selected = columns) {
+// Upload a file (which geocodes it automatically) and optionally fetch ACS.
+async function ready(steps: 'acs'[] = [], selected = columns) {
     const hook = setup(selected);
     await act(() => hook.result.current.chooseFile(csv()));
-    if (steps.includes('geocode')) await act(() => hook.result.current.geocodeStep());
     if (steps.includes('acs')) await act(() => hook.result.current.acsStep());
     return hook;
 }
@@ -102,7 +101,7 @@ describe('chooseFile', () => {
     });
 
     it('resets earlier results when a new file is chosen', async () => {
-        const { result } = await ready(['geocode', 'acs']);
+        const { result } = await ready(['acs']);
         mocked.uploadFile.mockRejectedValue(new Error('File upload failed.'));
         await act(() => result.current.chooseFile(csv('second.csv')));
         expect(result.current.fileName).toBe('second.csv');
@@ -113,10 +112,55 @@ describe('chooseFile', () => {
         expect(result.current.error).toBe('File upload failed.');
     });
 
-    it('leaves the address field empty when none are detected', async () => {
+    it('leaves the address field empty and skips geocoding when none are detected', async () => {
         mocked.fetchAddressFields.mockResolvedValue([]);
         const { result } = await ready();
         expect(result.current.addressField).toBe('');
+        expect(mocked.runGeocode).not.toHaveBeenCalled();
+        expect(result.current.geocode).toBeNull();
+    });
+
+    it('geocodes the first detected address field automatically', async () => {
+        const { result } = await ready();
+        expect(mocked.runGeocode).toHaveBeenCalledTimes(1);
+        expect(mocked.runGeocode).toHaveBeenCalledWith(upload, 'address');
+        expect(result.current.geocode).toEqual(geocode());
+        expect(result.current.busy).toBeNull();
+    });
+
+    it('moves from uploading to geocoding while the automatic geocode runs', async () => {
+        const pending = deferred<api.GeocodeResult>();
+        mocked.runGeocode.mockReturnValueOnce(pending.promise);
+        const { result } = setup();
+        let choosing!: Promise<void>;
+        act(() => {
+            choosing = result.current.chooseFile(csv());
+        });
+        expect(result.current.busy).toBe('upload');
+        await waitFor(() => expect(result.current.busy).toBe('geocode'));
+        expect(result.current.upload).toEqual(upload);
+        await act(async () => {
+            pending.resolve(geocode());
+            await choosing;
+        });
+        expect(result.current.geocode).toEqual(geocode());
+        expect(result.current.busy).toBeNull();
+    });
+
+    it('does not geocode when the upload fails', async () => {
+        mocked.uploadFile.mockRejectedValue(new Error('File upload failed.'));
+        const { result } = await ready();
+        expect(mocked.runGeocode).not.toHaveBeenCalled();
+        expect(result.current.error).toBe('File upload failed.');
+    });
+
+    it('keeps the upload and reports the error when the automatic geocode fails', async () => {
+        mocked.runGeocode.mockRejectedValueOnce(new api.ApiError('X', 'Geocoder is down'));
+        const { result } = await ready();
+        expect(result.current.upload).toEqual(upload);
+        expect(result.current.addressField).toBe('address');
+        expect(result.current.geocode).toBeNull();
+        expect(result.current.error).toBe('Geocoder is down');
     });
 });
 
@@ -133,6 +177,7 @@ describe('step guards', () => {
 
     it('requires geocoding and a column selection before ACS', async () => {
         const { result } = await ready([], []);
+        act(() => result.current.setAddressField('other')); // clears the automatic geocode
         await act(() => result.current.acsStep());
         expect(result.current.error).toBe('Run the geocoder first.');
         await act(() => result.current.geocodeStep());
@@ -163,18 +208,18 @@ describe('steps', () => {
         const { result } = await ready();
         act(() => result.current.setAddressField('other'));
         await act(() => result.current.geocodeStep());
-        expect(mocked.runGeocode).toHaveBeenCalledWith(upload, 'other');
+        expect(mocked.runGeocode).toHaveBeenLastCalledWith(upload, 'other');
         expect(result.current.geocode).toEqual(geocode());
     });
 
     it('fetches ACS from the geocode sidecar', async () => {
-        const { result } = await ready(['geocode', 'acs']);
+        const { result } = await ready(['acs']);
         expect(mocked.runAcs).toHaveBeenCalledWith(upload, geocode().tempPath, columns);
         expect(result.current.acs).toEqual(acs);
     });
 
     it('clears downstream results when geocoding again', async () => {
-        const { result } = await ready(['geocode', 'acs']);
+        const { result } = await ready(['acs']);
         await act(() => result.current.enrichStep({ geo: true, acs: true }));
         expect(result.current.enriched).toEqual(enriched);
         await act(() => result.current.geocodeStep());
@@ -183,7 +228,7 @@ describe('steps', () => {
     });
 
     it('clears the enriched result when fetching ACS again', async () => {
-        const { result } = await ready(['geocode', 'acs']);
+        const { result } = await ready(['acs']);
         await act(() => result.current.enrichStep({ geo: true, acs: true }));
         await act(() => result.current.acsStep());
         expect(result.current.enriched).toBeNull();
@@ -194,14 +239,14 @@ describe('steps', () => {
         [{ geo: true, acs: false }, { geocodeFile: geocode().tempPath }],
         [{ geo: false, acs: true }, { acsFile: acs.tempPath }],
     ])('enriches %o with only the matching sidecars, then downloads', async (opts, files) => {
-        const { result } = await ready(['geocode', 'acs']);
+        const { result } = await ready(['acs']);
         await act(() => result.current.enrichStep(opts));
         expect(mocked.runEnrich).toHaveBeenCalledWith(upload, { ...opts, ...files });
         expect(mocked.downloadFile).toHaveBeenCalledWith('session', 'enriched_input.csv');
     });
 
     it('reports download failures but keeps the enriched result', async () => {
-        const { result } = await ready(['geocode']);
+        const { result } = await ready();
         mocked.downloadFile.mockRejectedValueOnce(new Error('The download failed.'));
         await act(() => result.current.enrichStep({ geo: true, acs: false }));
         expect(result.current.enriched).toEqual(enriched);
@@ -227,7 +272,7 @@ describe('steps', () => {
 
 describe('stale results', () => {
     it('marks ACS stale when the column selection changes, until refetched', async () => {
-        const hook = await ready(['geocode', 'acs']);
+        const hook = await ready(['acs']);
         expect(hook.result.current.acsStale).toBe(false);
 
         const more = [...columns, { table_id: 'b02001', column_id: 'b02001001' }];
@@ -240,7 +285,7 @@ describe('stale results', () => {
     });
 
     it('clears geocode, ACS and enriched results when the address field changes', async () => {
-        const { result } = await ready(['geocode', 'acs']);
+        const { result } = await ready(['acs']);
         await act(() => result.current.enrichStep({ geo: true, acs: true }));
 
         act(() => result.current.setAddressField('other'));
@@ -251,7 +296,7 @@ describe('stale results', () => {
     });
 
     it('keeps results when the same address field is reselected', async () => {
-        const { result } = await ready(['geocode']);
+        const { result } = await ready();
         act(() => result.current.setAddressField('address'));
         expect(result.current.geocode).toEqual(geocode());
     });
@@ -259,7 +304,7 @@ describe('stale results', () => {
 
 describe('one action at a time', () => {
     it('ignores a geocode started while ACS is fetching', async () => {
-        const { result } = await ready(['geocode']);
+        const { result } = await ready();
         const pending = deferred<api.AcsResult>();
         mocked.runAcs.mockReturnValueOnce(pending.promise);
 
@@ -284,7 +329,7 @@ describe('one action at a time', () => {
         await act(async () => {
             await Promise.all([result.current.geocodeStep(), result.current.geocodeStep()]);
         });
-        expect(mocked.runGeocode).toHaveBeenCalledTimes(1);
+        expect(mocked.runGeocode).toHaveBeenCalledTimes(2); // automatic + one manual
     });
 
     it('ignores a new file chosen while a step is running', async () => {
@@ -337,8 +382,8 @@ describe('chooseAddress', () => {
         expect(file.name).toBe('address.csv');
         expect(await file.text()).toBe(`address\n"${typed}"\n`);
         expect(result.current.preview).toEqual({ headers: ['address'], rows: [[typed]] });
+        expect(result.current.geocode).toEqual(geocode());
 
-        await act(() => result.current.geocodeStep());
         await act(() => result.current.acsStep());
         expect(mocked.runGeocode).toHaveBeenCalledWith(upload, 'address');
         expect(mocked.runAcs).toHaveBeenCalledWith(upload, geocode().tempPath, columns);
@@ -359,12 +404,11 @@ describe('chooseAddress', () => {
 
     it('is replaced by a file uploaded afterwards', async () => {
         const { result } = setup();
+        mocked.runGeocode.mockResolvedValueOnce(geocode('/tmp/session/geocode_address.csv'));
         await act(() => result.current.chooseAddress(typed));
-        await act(() => result.current.geocodeStep());
+        expect(result.current.geocode?.tempPath).toBe('/tmp/session/geocode_address.csv');
         await act(() => result.current.chooseFile(csv()));
         expect(result.current.fileName).toBe('input.csv');
-        expect(result.current.geocode).toBeNull();
-        await act(() => result.current.geocodeStep());
         expect(result.current.geocode).toEqual(geocode());
         expect(mocked.runGeocode).toHaveBeenCalledTimes(2);
     });
