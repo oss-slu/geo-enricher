@@ -23,7 +23,7 @@ export default function UploadStep({ fileName, preview, busy, onFile, onAddress 
         <div className="upload">
             <div>
             <label htmlFor='dataset-file' className='upload-msg'>Upload a CSV or Excel file...</label>
-                <span className='help' tabIndex={0} aria-describedby='addr-help'>
+                <span className='help' aria-describedby='addr-help'>
                     ? <span id='addr-help' role='tooltip' className='help-tip'>
                         <span>Uploaded file must contain a field with valid US addresses containing street name/number, city, state, and optional zip code e.g.</span>
                         <ul>
