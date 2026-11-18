@@ -7,7 +7,9 @@ export type PreviewData = {
     rows: CellValue[][];
 };
 
-function PreviewTable({ heading, preview }: { heading: string, preview: PreviewData }) {
+type PreviewTableProps = { heading: string, preview: PreviewData };
+
+function PreviewTable({ heading, preview }: PreviewTableProps) {
     const [showAllRows, setShowAllRows] = useState(false);
 
     const visibleRows = showAllRows

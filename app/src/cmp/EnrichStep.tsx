@@ -1,14 +1,17 @@
-// EnrichStep.tsx
 import { useState } from 'react';
 
-export default function EnrichStep({ geocodeDone, acsDone, acsStale, busy, disabled = busy, onEnrich }: {
+type EnrichStepProps = {
     geocodeDone: boolean;
     acsDone: boolean;
     acsStale: boolean;
     busy: boolean;
     disabled?: boolean; // true while any step is running
     onEnrich: (opts: { geo: boolean; acs: boolean }) => void;
-}) {
+};
+
+export default function EnrichStep({
+    geocodeDone, acsDone, acsStale, busy, disabled = busy, onEnrich }: EnrichStepProps
+) {
     const [geo, setGeo] = useState(true);
     const [acs, setAcs] = useState(true);
 

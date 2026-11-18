@@ -2,12 +2,14 @@
 import PreviewTable, { type PreviewData } from './PreviewTable';
 import { ADDR_EXAMPLES } from '../consts';
 
-export default function UploadStep({ fileName, preview, busy, onFile }: {
+type UploadStepProps = {
     fileName: string | null;
     preview: PreviewData | null;
     busy: boolean;
     onFile: (f: File) => void;
-}) {
+};
+
+export default function UploadStep({ fileName, preview, busy, onFile }: UploadStepProps) {
     return (
         <div className="upload-heading">
             <div>

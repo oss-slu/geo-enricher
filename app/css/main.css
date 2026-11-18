@@ -21,8 +21,6 @@ main {
 .upload-heading {
     margin: 1rem 0;
     padding: 0.5rem;
-    border: 2px solid black;
-    border-radius: 0.4rem;
     width: fit-content;
 }
 
@@ -138,7 +136,7 @@ main {
 /* PREVIEW TABLE STYLING */
 .preview-section {
     width: fit-content;
-    margin-bottom: 1rem;
+    max-width: 100%;
 }
 
 .preview-section > h3 {

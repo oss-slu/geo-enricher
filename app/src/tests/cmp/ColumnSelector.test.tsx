@@ -44,7 +44,7 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
                 onSelectionChange={vi.fn()}
             />,
         );
@@ -67,7 +67,7 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
                 onSelectionChange={vi.fn()}
             />,
         );
@@ -95,7 +95,7 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
                 onSelectionChange={vi.fn()}
             />,
         );
@@ -132,7 +132,7 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
                 onSelectionChange={vi.fn()}
             />,
         );

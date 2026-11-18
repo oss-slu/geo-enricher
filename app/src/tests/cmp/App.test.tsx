@@ -103,17 +103,18 @@ async function uploadFile() {
 }
 
 describe('App', () => {
-    it('hides the file steps until a file is uploaded', () => {
+    it('disables the file steps until a file is uploaded', () => {
         render(<App />);
-        expect(screen.queryByRole('button', { name: 'Geocode addresses' })).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Enrich and download' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Geocode addresses' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Fetch ACS Data' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Enrich and download' })).toBeDisabled();
     });
 
     it('runs upload → geocode → ACS → enrich and download', async () => {
         render(<App />);
         await uploadFile();
 
-        const fetchAcs = screen.getByRole('button', { name: 'Fetch ACS data' });
+        const fetchAcs = screen.getByRole('button', { name: 'Fetch ACS Data' });
         const enrich = screen.getByRole('button', { name: 'Enrich and download' });
         expect(fetchAcs).toBeDisabled();
         expect(enrich).toBeDisabled();
@@ -131,7 +132,7 @@ describe('App', () => {
         expect(fetchAcs).toBeEnabled();
 
         fireEvent.click(fetchAcs);
-        expect(await screen.findByText('1 of 2 rows have ACS data')).toBeInTheDocument();
+        expect(await screen.findByText('1 of 2 matching rows in ACS database')).toBeInTheDocument();
         expect(screen.getByText('4321')).toBeInTheDocument();
         expect(JSON.parse(calls('/api/files/acs')[0][1].body)).toMatchObject({
             geocodeFile: geocode.tempPath,
@@ -155,8 +156,8 @@ describe('App', () => {
         await screen.findByText(/1 matched/);
         const column = await screen.findByRole('checkbox', { name: /B02001001/ });
         fireEvent.click(column);
-        fireEvent.click(screen.getByRole('button', { name: 'Fetch ACS data' }));
-        await screen.findByText(/rows have ACS data/);
+        fireEvent.click(screen.getByRole('button', { name: 'Fetch ACS Data' }));
+        await screen.findByText(/matching rows in ACS database/);
 
         fireEvent.click(column);
         expect(screen.getByText(/ACS selection changed/)).toBeInTheDocument();

@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { TABLE_IDS, URLS } from '../consts';
-import ColumnSelector from './ColumnSelector';
 import MenuBar from './MenuBar';
 import GeocodeStep from './GeocodeStep';
 import { useEnrichFlow } from '../hooks/useEnrichFlow';
 import UploadStep from './UploadStep';
 import EnrichStep from './EnrichStep';
-import PreviewTable from './PreviewTable';
 import type { SelectedAcsColumn } from '../api/files';
+import AcsStep from './AcsStep';
 
 export default function App() {
     const [selectedAcsColumns, setSelectedAcsColumns] = useState<SelectedAcsColumn[]>([]);
@@ -24,46 +23,32 @@ export default function App() {
                 </div>
             </MenuBar>
 
-            <UploadStep fileName={f.fileName} preview={f.preview} busy={f.busy !== null} onFile={f.chooseFile} />
+            <UploadStep
+                fileName={f.fileName} preview={f.preview}
+                busy={f.busy !== null} onFile={f.chooseFile}
+            />
             {f.error && <p role="alert">{f.error}</p>}
 
-            {f.upload && (
-                <GeocodeStep
-                    fields={f.addressFields} field={f.addressField} onField={f.setAddressField}
-                    result={f.geocode} busy={f.busy === 'geocode'} disabled={f.busy !== null}
-                    onRun={() => f.geocodeStep()}
-                />
+            <GeocodeStep
+                fields={f.addressFields} field={f.addressField} onField={f.setAddressField}
+                result={f.geocode} busy={f.busy === 'geocode'} disabled={f.busy !== null}
+                onRun={() => f.geocodeStep()}
+            />
 
-            )}
+            <AcsStep
+                canFetch={!!f.geocode && selectedAcsColumns.length > 0 && f.busy === null}
+                fetching={f.busy === 'acs'}
+                stale={f.acsStale}
+                result={f.acs}
+                onFetch={() => f.acsStep()}
+                tableIds={TABLE_IDS}
+                onSelectionChange={setSelectedAcsColumns}
+            />
 
-            <ColumnSelector table_ids={TABLE_IDS} onSelectionChange={setSelectedAcsColumns} />
-
-            {f.upload && (
-                <>
-                    <button
-                        type="button"
-                        disabled={!f.geocode || !selectedAcsColumns.length || f.busy !== null}
-                        onClick={() => f.acsStep()}
-                    >{f.busy === 'acs' ? 'Fetching...' : 'Fetch ACS data'}</button>
-                    {f.acsStale && <p>ACS selection changed since the last fetch. Fetch again.</p>}
-                    {f.acs && (
-                        <>
-                            <p>{f.acs.counts.withAcs} of {f.acs.counts.input} rows have ACS data</p>
-                            <PreviewTable
-                                heading='ACS Results'
-                                preview={{
-                                    headers: f.acs.preview.columns.map((c) => c.label),
-                                    rows: f.acs.preview.rows as (string | number | boolean)[][],
-                                }}
-                            />
-                        </>
-                    )}
-                    <EnrichStep
-                        geocodeDone={!!f.geocode} acsDone={!!f.acs} acsStale={f.acsStale}
-                        busy={f.busy === 'enrich'} disabled={f.busy !== null} onEnrich={f.enrichStep}
-                    />
-                </>
-            )}
+            <EnrichStep
+                geocodeDone={!!f.geocode} acsDone={!!f.acs} acsStale={f.acsStale}
+                busy={f.busy === 'enrich'} disabled={f.busy !== null} onEnrich={f.enrichStep}
+            />
         </main>
     );
 }

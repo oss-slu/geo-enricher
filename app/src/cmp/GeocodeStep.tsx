@@ -1,8 +1,7 @@
-// GeocodeStep.tsx
 import PreviewTable from './PreviewTable';
 import type { GeocodeResult } from '../api/files';
 
-export default function GeocodeStep({ fields, field, onField, result, busy, disabled = busy, onRun }: {
+type GeocodeStepProps = {
     fields: string[];
     field: string;
     onField: (f: string) => void;
@@ -10,7 +9,11 @@ export default function GeocodeStep({ fields, field, onField, result, busy, disa
     busy: boolean;
     disabled?: boolean; // true while any step is running
     onRun: () => void;
-}) {
+};
+
+export default function GeocodeStep({
+    fields, field, onField, result, busy, disabled = busy, onRun }: GeocodeStepProps
+) {
     return (
         <div>
             <label htmlFor="join-field"><b>Potential address field(s): </b></label>
