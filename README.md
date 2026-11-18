@@ -1,6 +1,14 @@
 # [geo-enricher](https://github.com/oss-slu/geo-enricher.git) | [Open Source with SLU](https://oss-slu.github.io)
 **Web tool for enriching datasets with geographic/demographic data provided by the US Census bureau**
 
+## How it works
+1. **Upload** a CSV or Excel file, or type a single US address.
+2. **Geocode.** Address columns are detected automatically and the first match is geocoded with the US Census geocoder. You can pick a different column and re-run.
+3. **ACS data.** Choose American Community Survey columns to look up for each geocoded row's block group.
+4. **Enrich and download.** Add geocode data, ACS data, or both to the original file and download it in the same format.
+
+See [data flow](docs/dev/data_flow.md) for how data moves between the app, API, and database.
+
 ## <u>Tech stack:</u>
 - ### <u>Frontend</u>
     ### */app*   
@@ -22,7 +30,7 @@
 ## Project installation/setup
 ### 1. Download and install [Docker Desktop](https://www.docker.com/get-started/)
 ### 2. Clone the repository & open project locally
-`git clone https://github.com/oss-slu/enroll-dash.git`<br>`cd enroll-dash`
+`git clone https://github.com/oss-slu/geo-enricher.git`<br>`cd geo-enricher`
 ### 3. Configure the database
 
 Create the environment file with separate random database owner and application
@@ -137,7 +145,7 @@ restore a newer dump, reset the volume first (`--profile lite` selects the
 ```sh
 docker compose --profile lite stop db-lite
 docker compose --profile lite rm -f db-lite
-docker volume rm enroll-dash_db-lite-data
+docker volume rm geo-enricher_db-lite-data
 docker compose --profile lite up --build --detach db-lite
 ```
 
@@ -154,10 +162,9 @@ the role that owns the restored tables, or re-apply the grants from
 `scripts/db/setup.sql` (as `db-lite` does) so the application role can query the
 data.
 
-## File geocoding API
+## Developer docs
 
-Upload and enrich CSV or Excel datasets, or save a dataset directly. See the
-[API route reference](docs/dev/api_routes.md) for every endpoint, parameter, and
-response, and the
-[file enrichment endpoint contract](docs/dev/geocoder_file_enrichment.md) for
-options, limits, export behavior, and session cleanup.
+- [Data flow](docs/dev/data_flow.md): upload, geocode, ACS, and enrich end to end, including sessions and sidecar files
+- [Frontend flow](docs/dev/frontend_flow.md): the step components and the `useEnrichFlow` hook
+- [File pipeline routes](docs/dev/file_routes.md): `/files/geocode`, `/files/acs`, and `/files/enrich`
+- [API route reference](docs/dev/api_routes.md): the other endpoints (upload, address fields, ACS metadata, single-address geocode)

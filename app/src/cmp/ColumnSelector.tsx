@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { SelectedAcsColumn } from '../api/files';
 
 type MetadataRow = {
     table_id: string;
@@ -13,17 +14,15 @@ type MetadataResponse = {
     message?: string;
 };
 
-type SelectedAcsColumn = {
-    table_id: string;
-    column_id: string;
-};
-
 type AcsColumnSelectorProps = {
-    table_ids: string[];
+    tableIds: string[];
+    canFetch: boolean;
+    fetching: boolean;
     onSelectionChange: (columns: SelectedAcsColumn[]) => void;
+    onFetch: () => void;
 };
 
-export default function ColumnSelector({ table_ids, onSelectionChange }: AcsColumnSelectorProps) {
+export default function ColumnSelector({ tableIds, canFetch, fetching, onSelectionChange, onFetch }: AcsColumnSelectorProps) {
     const [metadata, setMetadata] = useState<MetadataRow[]>([]);
     const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
@@ -36,7 +35,7 @@ export default function ColumnSelector({ table_ids, onSelectionChange }: AcsColu
             try {
                 const params = new URLSearchParams();
 
-                table_ids.forEach(table => params.append('tables', table));
+                tableIds.forEach(table => params.append('tables', table));
 
                 const response = await fetch(
                     `/api/acs-metadata?${params.toString()}`,
@@ -64,53 +63,26 @@ export default function ColumnSelector({ table_ids, onSelectionChange }: AcsColu
         return () => controller.abort();
     }, []);
 
-    function toggleColumn(columnId: string) {
-        setSelectedColumns((current) => {
-            const next = new Set(current);
-
-            if (next.has(columnId)) {
-                next.delete(columnId);
-            } else {
-                next.add(columnId);
-            }
-            const selected = metadata
+    function commit(next: Set<string>) {
+        setSelectedColumns(next);
+        onSelectionChange(
+            metadata
                 .filter((row) => next.has(row.column_id))
-                .map((row) => ({
-                    table_id: row.table_id,
-                    column_id: row.column_id,
-                }));
+                .map((row) => ({ table_id: row.table_id, column_id: row.column_id })),
+        );
+    }
 
-            onSelectionChange(selected);
-            return next;
-        });
+    function toggleColumn(columnId: string) {
+        const next = new Set(selectedColumns);
+        next.has(columnId) ? next.delete(columnId) : next.add(columnId);
+        commit(next);
     }
 
     function clearColumns(tableId?: string) {
-        setSelectedColumns((current) => {
-            const next = tableId
-                ? new Set(
-                    [...current].filter(
-                        (columnId) =>
-                            !metadata.some(
-                                (row) =>
-                                    row.table_id === tableId &&
-                                    row.column_id === columnId,
-                            ),
-                        ),
-                )
-                : new Set<string>();
-
-            const selected = metadata
-                .filter((row) => next.has(row.column_id))
-                .map((row) => ({
-                    table_id: row.table_id,
-                    column_id: row.column_id,
-                }));
-
-            onSelectionChange(selected);
-
-            return next;
-        });
+        const next = tableId
+            ? new Set([...selectedColumns].filter((id) => !metadata.some((r) => r.table_id === tableId && r.column_id === id)))
+            : new Set<string>();
+        commit(next);
     }
 
     const tables = Array.from(
@@ -133,7 +105,9 @@ export default function ColumnSelector({ table_ids, onSelectionChange }: AcsColu
             </summary>
             <section aria-labelledby="acs-selector-heading">
                 <p><i>Expand tables to select from available fields</i></p>
-
+                <button type="button" disabled={!canFetch} onClick={onFetch}>
+                    {fetching ? 'Fetching...' : 'Fetch ACS Data'}
+                </button>
                 {loading && <p role="status">Loading ACS metadata...</p>}
 
                 {error && <p role="alert">{error}</p>}

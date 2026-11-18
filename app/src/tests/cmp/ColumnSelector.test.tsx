@@ -44,7 +44,10 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
+                canFetch={false}
+                fetching={false}
+                onFetch={vi.fn()}
                 onSelectionChange={vi.fn()}
             />,
         );
@@ -67,7 +70,10 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
+                canFetch={false}
+                fetching={false}
+                onFetch={vi.fn()}
                 onSelectionChange={vi.fn()}
             />,
         );
@@ -95,7 +101,10 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
+                canFetch={false}
+                fetching={false}
+                onFetch={vi.fn()}
                 onSelectionChange={vi.fn()}
             />,
         );
@@ -132,7 +141,10 @@ describe('AcsColumnSelector', () => {
 
         render(
             <AcsColumnSelector
-                table_ids={TABLE_IDS}
+                tableIds={TABLE_IDS}
+                canFetch={false}
+                fetching={false}
+                onFetch={vi.fn()}
                 onSelectionChange={vi.fn()}
             />,
         );

@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { TABLE_IDS, URLS } from '../consts';
-import DatasetGeoJoiner from './DatasetGeoJoiner';
-import ColumnSelector from './ColumnSelector';
 import MenuBar from './MenuBar';
+import GeocodeStep from './ux/GeocodeStep';
+import { useEnrichFlow } from '../hooks/useEnrichFlow';
+import UploadStep from './ux/UploadStep';
+import EnrichStep from './ux/EnrichStep';
+import type { SelectedAcsColumn } from '../api/files';
+import AcsStep from './ux/AcsStep';
 
-export type SelectedAcsColumn = {
-    table_id: string;
-    column_id: string;
-};
-
-function App() {
+export default function App() {
     const [selectedAcsColumns, setSelectedAcsColumns] = useState<SelectedAcsColumn[]>([]);
-
+    const f = useEnrichFlow(selectedAcsColumns);
+    
     return (
-        <main>
+        <>
             <MenuBar justify='space-between' gap='0.5rem' padding='0' className='top-menu'>
                 <a href={URLS.OSS_URL} target="_blank"><img src={URLS.OSS_IMG} height='50px'></img></a>
                 <h1>Geo-Enricher</h1>
@@ -22,10 +22,35 @@ function App() {
                     <h3>View the <a href={URLS.SRC_URL} target="_blank">Source Code</a></h3>
                 </div>
             </MenuBar>
-            <DatasetGeoJoiner selectedAcsColumns={selectedAcsColumns} />
-            <ColumnSelector table_ids={TABLE_IDS} onSelectionChange={setSelectedAcsColumns} />
-        </main>
+
+            <main>
+                <UploadStep
+                    fileName={f.fileName} preview={f.preview}
+                    busy={f.busy !== null} onFile={f.chooseFile} onAddress={f.chooseAddress}
+                />
+                {f.error && <p role="alert">{f.error}</p>}
+
+                <GeocodeStep
+                    fields={f.addressFields} field={f.addressField} onField={f.setAddressField}
+                    result={f.geocode} busy={f.busy === 'geocode'} disabled={f.busy !== null}
+                    onRun={() => f.geocodeStep()}
+                />
+
+                <AcsStep
+                    canFetch={!!f.geocode && selectedAcsColumns.length > 0 && f.busy === null}
+                    fetching={f.busy === 'acs'}
+                    stale={f.acsStale}
+                    result={f.acs}
+                    onFetch={() => f.acsStep()}
+                    tableIds={TABLE_IDS}
+                    onSelectionChange={setSelectedAcsColumns}
+                />
+
+                <EnrichStep
+                    geocodeDone={!!f.geocode} acsDone={!!f.acs} acsStale={f.acsStale}
+                    busy={f.busy === 'enrich'} disabled={f.busy !== null} onEnrich={f.enrichStep}
+                />
+                </main>
+            </>
     );
 }
-
-export default App;

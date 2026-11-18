@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { detectAddressFields } from '../utils/addressFields';
-import { fileType, readDataset } from '../utils/dataset';
+import { fileType, readDataset } from '../dataset/dataset';
 import { readSessionFile, withSession } from '../utils/storage';
 import { FileError } from '../errs/file';
 import { fileResponseError } from '../utils/fileResponse';
 
 const router = Router();
-router.get('/address-fields', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const { path, sessionId, sheet, hasHeaders } = req.query;
         if (typeof path !== 'string' || !path || typeof sessionId !== 'string')

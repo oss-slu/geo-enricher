@@ -28,3 +28,11 @@ export const URLS = {
     SRC_URL: "https://github.com/oss-slu/geo-enricher",
     GH_IMG: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/GitHub_Invertocat_Logo.svg/250px-GitHub_Invertocat_Logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
 };
+
+export const ADDR_EXAMPLES = [
+    '123 Main St, Saint Louis MO 63109',
+    '456 Main St, Apt. 2E, Saint Louis, MO, 63109',
+    '12A Martin Luther King Jr Blvd, Saint Louis, MO 63103',
+    "12 1/2 Rue de l'Église, Montréal, MO 63103",
+    '72 LAKE SHORE DR BARRINGTON IL 60010-1471 USA',
+];

@@ -11,7 +11,7 @@ import {
     outputColumns,
     validateDataset,
     type Dataset,
-} from '../../utils/dataset';
+} from '../../dataset/dataset';
 import { FILE_LIMITS } from '../../utils/fileLimits';
 
 const table: Dataset = {

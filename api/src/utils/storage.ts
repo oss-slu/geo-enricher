@@ -170,6 +170,7 @@ export const saveSessionFile = async (
     filename: string,
     buffer: Buffer,
     signal?: AbortSignal,
+    overwrite = false,
 ): Promise<string> =>
     withSession(sessionId, async () => {
         validateFilename(filename);
@@ -183,7 +184,11 @@ export const saveSessionFile = async (
             await fs.utimes(dir, new Date(), new Date());
             signal?.throwIfAborted();
             // Linking publishes a complete file atomically and fails if the name exists.
-            await fs.link(pending, outputPath);
+            if (overwrite) {
+                await fs.rename(pending, outputPath);
+            } else {
+                await fs.link(pending, outputPath);
+            }
             if (signal?.aborted) {
                 await fs.rm(outputPath, { force: true });
                 signal.throwIfAborted();

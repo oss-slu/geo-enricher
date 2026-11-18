@@ -50,7 +50,7 @@ const geocode: RequestHandler = async (req, res) => {
     }
 };
 
-router.get('/geocode', geocode);
-router.post('/geocode', geocode);
+router.get('/', geocode);
+router.post('/', geocode);
 
 export default router;

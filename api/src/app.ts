@@ -5,10 +5,10 @@ import upload from './routes/upload';
 import geocode from './routes/geocode';
 import dbHealth from './routes/dbHealth';
 import addressFields from './routes/addressFields';
-import geocodeFile from './routes/geocodeFile';
 import datasetFile from './routes/datasetFile';
 import acsMeta from './routes/acsMeta';
 import queryACS from './routes/queryACS';
+import files from './routes/files'
 import { FILE_LIMITS } from './utils/fileLimits';
 import downloadFile from './routes/downloadFile';
 
@@ -18,20 +18,19 @@ export const ROUTES = [
     { router: geocode, route: '/geocode' },
     { router: dbHealth, route: '/db-health' },
     { router: addressFields, route: '/address-fields' },
-    { router: geocodeFile, route: '/geocode-file' },
     { router: datasetFile, route: '/dataset-file' },
     { router: downloadFile, route: '/download-file' },
     { router: acsMeta, route: '/acs-metadata' },
     { router: queryACS, route: '/query-acs' },
+    { router: files, route: '/files' },
 ];
 
 export function createApp(origin?: string) {
     const app = express();
     app.use(express.json({ limit: FILE_LIMITS.bytes }));
     app.use(cors({ origin: origin, credentials: true }));
-
     // register routes
-    ROUTES.forEach((r) => app.use(r.router));
+    ROUTES.forEach((r) => app.use(r.route, r.router));
 
     const bodyError: ErrorRequestHandler = (err, req, res, next) => {
         if (req.path !== '/geocode-file' && req.path !== '/dataset-file')

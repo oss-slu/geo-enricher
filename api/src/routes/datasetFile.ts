@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { FileError } from '../errs/file';
-import { fileType, saveDataset, validateDataset } from '../utils/dataset';
+import { fileType, saveDataset, validateDataset } from '../dataset/dataset';
 import { validateSessionId } from '../utils/storage';
 import { fileResponseError } from '../utils/fileResponse';
 
 const router = Router();
-router.get('/dataset-file', (_req, res) => {
+router.get('/', (_req, res) => {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
 });
-router.post('/dataset-file', async (req, res) => {
+router.post('/', async (req, res) => {
     const controller = new AbortController();
     const cancel = () => {
         if (!res.writableEnded)

@@ -2,9 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as XLSX from 'xlsx';
 import { FileError } from '../errs/file';
-import { FILE_LIMITS } from './fileLimits';
-import { saveSessionFile, validateFilename } from './storage';
-import { randomUUID } from 'node:crypto';
+import { FILE_LIMITS } from '../utils/fileLimits';
+import { saveSessionFile, validateFilename } from '../utils/storage';
 import { inflateRawSync } from 'node:zlib';
 
 export type Cell = string | number | boolean | Date | null;
@@ -533,6 +532,7 @@ export async function saveDataset(
     dataset: Dataset,
     type: FileType,
     signal?: AbortSignal,
+    options: { overwrite?: boolean } = {},
 ) {
     validateFilename(filename);
     if (fileType(filename) !== type)
@@ -548,12 +548,13 @@ export async function saveDataset(
             'FILE_TOO_LARGE',
             'Output exceeds file byte limit',
         );
-    const outputName = `${path.basename(filename, path.extname(filename)).slice(0, 150)}_${randomUUID()}.${type}`;
+    const outputName = `${path.basename(filename, path.extname(filename)).slice(0, 150)}.${type}`;
     const tempPath = await saveSessionFile(
         sessionId,
         outputName,
         buffer,
         signal,
+        options.overwrite ?? false,
     );
     return {
         sessionId,
