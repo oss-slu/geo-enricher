@@ -19,12 +19,12 @@ export default function EnrichStep({
     const useAcs = acs && acsDone && !acsStale;
 
     return (
-        <div className="enricher">
+        <div className="enrich">
             <div className="boxes">
                 <label className="geo">
                     <input type="checkbox" checked={useGeo} disabled={!geocodeDone}
                            onChange={(e) => setGeo(e.target.checked)} />
-                    Geocode data
+                    Geocoder data
                 </label>
                 <label className="acs">
                     <input type="checkbox" checked={useAcs} disabled={!acsDone || acsStale}

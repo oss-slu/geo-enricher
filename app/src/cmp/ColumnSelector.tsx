@@ -16,10 +16,13 @@ type MetadataResponse = {
 
 type AcsColumnSelectorProps = {
     tableIds: string[];
+    canFetch: boolean;
+    fetching: boolean;
     onSelectionChange: (columns: SelectedAcsColumn[]) => void;
+    onFetch: () => void;
 };
 
-export default function ColumnSelector({ tableIds, onSelectionChange }: AcsColumnSelectorProps) {
+export default function ColumnSelector({ tableIds, canFetch, fetching, onSelectionChange, onFetch }: AcsColumnSelectorProps) {
     const [metadata, setMetadata] = useState<MetadataRow[]>([]);
     const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
@@ -102,7 +105,9 @@ export default function ColumnSelector({ tableIds, onSelectionChange }: AcsColum
             </summary>
             <section aria-labelledby="acs-selector-heading">
                 <p><i>Expand tables to select from available fields</i></p>
-
+                <button type="button" disabled={!canFetch} onClick={onFetch}>
+                    {fetching ? 'Fetching...' : 'Fetch ACS Data'}
+                </button>
                 {loading && <p role="status">Loading ACS metadata...</p>}
 
                 {error && <p role="alert">{error}</p>}

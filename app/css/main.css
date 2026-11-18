@@ -5,7 +5,53 @@ body {
 main {
     display: grid;
     gap: 1rem;
+    grid-template-areas: 
+        "upload uprvw uprvw"
+        "gctrl enrich enrich"
+        "gprvw gprvw gprvw"
+        "afetch aprvw aprvw"
+    ;
 }
+
+main > * {
+    border: 2px solid black;
+    border-radius: 0.4rem;
+    padding: 0.4rem;
+}
+
+/* ux blocks */
+.upload {
+    grid-area: upload;
+    margin: 1rem 0;
+    padding: 0.5rem;
+    width: fit-content;
+}
+
+.upload-preview {
+    grid-area: uprvw;
+}
+
+.geocode-ctrl {
+    grid-area: gctrl;
+    
+}
+
+.geocode-preview {
+    grid-area: gprvw;
+}
+
+.acs-fetch {
+    grid-area: afetch;
+}
+
+.acs-preview {
+    grid-area: aprvw;
+}
+
+.enrich {
+    grid-area: enrich;
+}
+
 /* MENU BAR STYLING */
 .top-menu > .src {
     display: flex;
@@ -18,17 +64,12 @@ main {
 }
 
 /* FILE UPLOAD SECTION STYLING */
-.upload-heading {
-    margin: 1rem 0;
-    padding: 0.5rem;
-    width: fit-content;
-}
 
-.upload-heading > * {
+.upload > * {
     margin: 0;
 }
 
-.upload-heading > input {
+.upload > input {
     margin-bottom: 1rem;
 }
 
@@ -109,7 +150,6 @@ main {
     cursor: pointer;
     padding: 0.4rem 0.6rem;
     user-select: none;
-    width: 100%;
     text-align: left;
     border: 1px solid #888;
     border-radius: 0.4rem;

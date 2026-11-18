@@ -13,7 +13,7 @@ export default function App() {
     const f = useEnrichFlow(selectedAcsColumns);
     
     return (
-        <main>
+        <>
             <MenuBar justify='space-between' gap='0.5rem' padding='0' className='top-menu'>
                 <a href={URLS.OSS_URL} target="_blank"><img src={URLS.OSS_IMG} height='50px'></img></a>
                 <h1>Geo-Enricher</h1>
@@ -23,32 +23,34 @@ export default function App() {
                 </div>
             </MenuBar>
 
-            <UploadStep
-                fileName={f.fileName} preview={f.preview}
-                busy={f.busy !== null} onFile={f.chooseFile}
-            />
-            {f.error && <p role="alert">{f.error}</p>}
+            <main>
+                <UploadStep
+                    fileName={f.fileName} preview={f.preview}
+                    busy={f.busy !== null} onFile={f.chooseFile}
+                />
+                {f.error && <p role="alert">{f.error}</p>}
 
-            <GeocodeStep
-                fields={f.addressFields} field={f.addressField} onField={f.setAddressField}
-                result={f.geocode} busy={f.busy === 'geocode'} disabled={f.busy !== null}
-                onRun={() => f.geocodeStep()}
-            />
+                <GeocodeStep
+                    fields={f.addressFields} field={f.addressField} onField={f.setAddressField}
+                    result={f.geocode} busy={f.busy === 'geocode'} disabled={f.busy !== null}
+                    onRun={() => f.geocodeStep()}
+                />
 
-            <AcsStep
-                canFetch={!!f.geocode && selectedAcsColumns.length > 0 && f.busy === null}
-                fetching={f.busy === 'acs'}
-                stale={f.acsStale}
-                result={f.acs}
-                onFetch={() => f.acsStep()}
-                tableIds={TABLE_IDS}
-                onSelectionChange={setSelectedAcsColumns}
-            />
+                <AcsStep
+                    canFetch={!!f.geocode && selectedAcsColumns.length > 0 && f.busy === null}
+                    fetching={f.busy === 'acs'}
+                    stale={f.acsStale}
+                    result={f.acs}
+                    onFetch={() => f.acsStep()}
+                    tableIds={TABLE_IDS}
+                    onSelectionChange={setSelectedAcsColumns}
+                />
 
-            <EnrichStep
-                geocodeDone={!!f.geocode} acsDone={!!f.acs} acsStale={f.acsStale}
-                busy={f.busy === 'enrich'} disabled={f.busy !== null} onEnrich={f.enrichStep}
-            />
-        </main>
+                <EnrichStep
+                    geocodeDone={!!f.geocode} acsDone={!!f.acs} acsStale={f.acsStale}
+                    busy={f.busy === 'enrich'} disabled={f.busy !== null} onEnrich={f.enrichStep}
+                />
+                </main>
+            </>
     );
 }

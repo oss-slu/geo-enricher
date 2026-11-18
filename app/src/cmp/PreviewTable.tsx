@@ -7,9 +7,9 @@ export type PreviewData = {
     rows: CellValue[][];
 };
 
-type PreviewTableProps = { heading: string, preview: PreviewData };
+type PreviewTableProps = { className?: string, heading: string, preview: PreviewData };
 
-function PreviewTable({ heading, preview }: PreviewTableProps) {
+function PreviewTable({ className, heading, preview }: PreviewTableProps) {
     const [showAllRows, setShowAllRows] = useState(false);
 
     const visibleRows = showAllRows
@@ -17,7 +17,7 @@ function PreviewTable({ heading, preview }: PreviewTableProps) {
         : preview.rows.slice(0, PREVIEW_LIMIT);
 
     return (
-        <div className='preview-section'>
+        <div className={className ?? 'preview-section'}>
             <h3>{heading}</h3>
             <div style={{ overflowX: 'auto' }}>
                 <table>

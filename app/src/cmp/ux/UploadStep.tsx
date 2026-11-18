@@ -11,7 +11,7 @@ type UploadStepProps = {
 
 export default function UploadStep({ fileName, preview, busy, onFile }: UploadStepProps) {
     return (
-        <div className="upload-heading">
+        <div className="upload">
             <div>
             <label htmlFor='dataset-file' className='upload-msg'>Upload a CSV or Excel file...</label>
                 <span className='help' tabIndex={0} aria-describedby='addr-help'>
@@ -33,7 +33,7 @@ export default function UploadStep({ fileName, preview, busy, onFile }: UploadSt
                 onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
             />
             {fileName && <p><small>Selected <i>{fileName}</i></small></p>}
-            {preview && <PreviewTable heading='File Preview' preview={preview} />}
+            {preview && <PreviewTable className='upload-preview' heading='File Preview' preview={preview} />}
         </div>
     );
 }

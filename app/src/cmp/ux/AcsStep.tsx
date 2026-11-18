@@ -15,16 +15,18 @@ type AcsStepProps = {
 export default function AcsStep({ canFetch, fetching, stale, result, tableIds, onFetch, onSelectionChange }: AcsStepProps) {
     return (
         <>
-            <ColumnSelector tableIds={tableIds} onSelectionChange={onSelectionChange} />
+            <div className="acs-fetch">
+                <ColumnSelector tableIds={tableIds} canFetch={canFetch} fetching={fetching} onFetch={onFetch} onSelectionChange={onSelectionChange} />
 
-            <button type="button" disabled={!canFetch} onClick={onFetch}>
-                {fetching ? 'Fetching...' : 'Fetch ACS Data'}
-            </button>
+                {/* <button type="button" disabled={!canFetch} onClick={onFetch}>
+                    {fetching ? 'Fetching...' : 'Fetch ACS Data'}
+                </button> */}
+            </div>
 
             {stale && <p>ACS selection changed since last fetch</p>}
             
             {result && (
-                <>
+                <div className="acs-preview">
                     <p>{result.counts.withAcs} of {result.counts.input} matching rows in ACS database</p>
                     <PreviewTable
                         heading='ACS Results'
@@ -33,7 +35,7 @@ export default function AcsStep({ canFetch, fetching, stale, result, tableIds, o
                             rows: result.preview.rows as (string | number | boolean)[][],
                         }}
                     />
-                </>
+                </div>
             )}
         </>
     )
