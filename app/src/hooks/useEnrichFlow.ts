@@ -62,6 +62,14 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
         });
     }
 
+    // A typed address is handled as a one-row CSV with a single address column.
+    function chooseAddress(address: string) {
+        const value = address.trim();
+        if (!value) return Promise.resolve();
+        const csv = `address\n"${value.replaceAll('"', '""')}"\n`;
+        return chooseFile(new File([csv], 'address.csv', { type: 'text/csv' }));
+    }
+
     // Results built from another address field no longer apply.
     function chooseAddressField(field: string) {
         if (busyRef.current || field === addressField) return;
@@ -106,6 +114,6 @@ export function useEnrichFlow(selectedAcsColumns: api.SelectedAcsColumn[]) {
     return {
         upload, fileName, preview, addressFields, addressField, setAddressField: chooseAddressField,
         geocode, acs, acsStale, enriched, busy, error,
-        chooseFile, geocodeStep, acsStep, enrichStep,
+        chooseFile, chooseAddress, geocodeStep, acsStep, enrichStep,
     };
 }

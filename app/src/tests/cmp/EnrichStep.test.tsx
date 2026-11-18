@@ -18,7 +18,7 @@ function setup(props: Partial<Props> = {}) {
     );
     return {
         onEnrich,
-        geo: screen.getByLabelText('Geocode data'),
+        geo: screen.getByLabelText('Geocoder data'),
         acs: screen.getByLabelText('ACS data'),
         button: screen.getByRole('button'),
     };

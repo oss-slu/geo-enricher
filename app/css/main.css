@@ -69,7 +69,20 @@ main > * {
     margin: 0;
 }
 
+/* after .upload > * so its margin reset doesn't win */
+.upload > .upload-preview {
+    margin-bottom: 1rem;
+}
+
 .upload > input {
+    margin-bottom: 1rem;
+}
+
+.upload > form > label {
+    display: block;
+}
+
+.upload > form {
     margin-bottom: 1rem;
 }
 
@@ -177,6 +190,7 @@ main > * {
 .preview-section {
     width: fit-content;
     max-width: 100%;
+    margin-bottom: 0.25rem;
 }
 
 .preview-section > h3 {

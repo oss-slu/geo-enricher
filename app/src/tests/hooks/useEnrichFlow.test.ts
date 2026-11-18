@@ -325,3 +325,47 @@ describe('one action at a time', () => {
         expect(result.current.geocode).toEqual(geocode());
     });
 });
+
+describe('chooseAddress', () => {
+    const typed = '123 Main St, St Louis, MO 63103';
+
+    it('uploads the address as a one-row CSV and runs the normal steps', async () => {
+        const { result } = setup();
+        await act(() => result.current.chooseAddress(`  ${typed} `));
+
+        const file = mocked.uploadFile.mock.calls[0][0];
+        expect(file.name).toBe('address.csv');
+        expect(await file.text()).toBe(`address\n"${typed}"\n`);
+        expect(result.current.preview).toEqual({ headers: ['address'], rows: [[typed]] });
+
+        await act(() => result.current.geocodeStep());
+        await act(() => result.current.acsStep());
+        expect(mocked.runGeocode).toHaveBeenCalledWith(upload, 'address');
+        expect(mocked.runAcs).toHaveBeenCalledWith(upload, geocode().tempPath, columns);
+    });
+
+    it('escapes quotes in the address', async () => {
+        const { result } = setup();
+        await act(() => result.current.chooseAddress('1 "A" St, St Louis, MO 63103'));
+        const file = mocked.uploadFile.mock.calls[0][0];
+        expect(await file.text()).toBe('address\n"1 ""A"" St, St Louis, MO 63103"\n');
+    });
+
+    it('ignores a blank address', async () => {
+        const { result } = setup();
+        await act(() => result.current.chooseAddress('   '));
+        expect(mocked.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it('is replaced by a file uploaded afterwards', async () => {
+        const { result } = setup();
+        await act(() => result.current.chooseAddress(typed));
+        await act(() => result.current.geocodeStep());
+        await act(() => result.current.chooseFile(csv()));
+        expect(result.current.fileName).toBe('input.csv');
+        expect(result.current.geocode).toBeNull();
+        await act(() => result.current.geocodeStep());
+        expect(result.current.geocode).toEqual(geocode());
+        expect(mocked.runGeocode).toHaveBeenCalledTimes(2);
+    });
+});

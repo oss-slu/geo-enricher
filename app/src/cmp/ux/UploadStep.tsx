@@ -1,4 +1,5 @@
 // UploadStep.tsx
+import { useState, type SubmitEvent } from 'react';
 import PreviewTable, { type PreviewData } from '../PreviewTable';
 import { ADDR_EXAMPLES } from '../../consts';
 
@@ -7,9 +8,17 @@ type UploadStepProps = {
     preview: PreviewData | null;
     busy: boolean;
     onFile: (f: File) => void;
+    onAddress: (a: string) => void;
 };
 
-export default function UploadStep({ fileName, preview, busy, onFile }: UploadStepProps) {
+export default function UploadStep({ fileName, preview, busy, onFile, onAddress }: UploadStepProps) {
+    const [address, setAddress] = useState('');
+
+    function onSubmit(e: SubmitEvent<HTMLFormElement>) {
+        e.preventDefault();
+        onAddress(address);
+    }
+
     return (
         <div className="upload">
             <div>
@@ -30,9 +39,26 @@ export default function UploadStep({ fileName, preview, busy, onFile }: UploadSt
                 type="file"
                 accept=".csv,.xls,.xlsx"
                 disabled={busy}
-                onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+                onChange={(e) => {
+                    if (!e.target.files?.[0]) return;
+                    setAddress('');
+                    onFile(e.target.files[0]);
+                }}
             />
             {fileName && <p><small>Selected <i>{fileName}</i></small></p>}
+
+            <form onSubmit={onSubmit}>
+                <label htmlFor='single-addr' className='upload-msg'>...or enter a single address</label>
+                <input
+                    id='single-addr'
+                    type='text'
+                    value={address}
+                    disabled={busy}
+                    placeholder={ADDR_EXAMPLES[0]}
+                    onChange={(e) => setAddress(e.target.value)}
+                />
+                <button type='submit' disabled={busy || !address.trim()}>Use address</button>
+            </form>
             {preview && <PreviewTable className='upload-preview' heading='File Preview' preview={preview} />}
         </div>
     );

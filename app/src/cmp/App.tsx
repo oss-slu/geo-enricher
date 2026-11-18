@@ -26,7 +26,7 @@ export default function App() {
             <main>
                 <UploadStep
                     fileName={f.fileName} preview={f.preview}
-                    busy={f.busy !== null} onFile={f.chooseFile}
+                    busy={f.busy !== null} onFile={f.chooseFile} onAddress={f.chooseAddress}
                 />
                 {f.error && <p role="alert">{f.error}</p>}
 

@@ -16,14 +16,15 @@ export default function AcsStep({ canFetch, fetching, stale, result, tableIds, o
     return (
         <>
             <div className="acs-fetch">
-                <ColumnSelector tableIds={tableIds} canFetch={canFetch} fetching={fetching} onFetch={onFetch} onSelectionChange={onSelectionChange} />
-
-                {/* <button type="button" disabled={!canFetch} onClick={onFetch}>
-                    {fetching ? 'Fetching...' : 'Fetch ACS Data'}
-                </button> */}
+                {stale && <p>ACS selection changed since last fetch</p>}
+                <ColumnSelector
+                    tableIds={tableIds}
+                    canFetch={canFetch}
+                    fetching={fetching}
+                    onFetch={onFetch}
+                    onSelectionChange={onSelectionChange}
+                />
             </div>
-
-            {stale && <p>ACS selection changed since last fetch</p>}
             
             {result && (
                 <div className="acs-preview">

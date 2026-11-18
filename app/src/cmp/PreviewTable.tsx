@@ -17,7 +17,7 @@ function PreviewTable({ className, heading, preview }: PreviewTableProps) {
         : preview.rows.slice(0, PREVIEW_LIMIT);
 
     return (
-        <div className={className ?? 'preview-section'}>
+        <div className={className ? `preview-section ${className}` : 'preview-section'}>
             <h3>{heading}</h3>
             <div style={{ overflowX: 'auto' }}>
                 <table>
