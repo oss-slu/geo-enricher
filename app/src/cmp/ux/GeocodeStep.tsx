@@ -1,5 +1,5 @@
-import PreviewTable from './PreviewTable';
-import type { GeocodeResult } from '../api/files';
+import PreviewTable from '../PreviewTable';
+import type { GeocodeResult } from '../../api/files';
 
 type GeocodeStepProps = {
     fields: string[];

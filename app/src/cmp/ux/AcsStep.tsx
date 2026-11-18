@@ -1,6 +1,6 @@
-import type { AcsResult, SelectedAcsColumn } from "../api/files";
-import ColumnSelector from "./ColumnSelector";
-import PreviewTable from "./PreviewTable";
+import type { AcsResult, SelectedAcsColumn } from "../../api/files";
+import ColumnSelector from "../ColumnSelector";
+import PreviewTable from "../PreviewTable";
 
 type AcsStepProps = {
     canFetch: boolean;

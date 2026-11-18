@@ -1,6 +1,6 @@
 // UploadStep.tsx
-import PreviewTable, { type PreviewData } from './PreviewTable';
-import { ADDR_EXAMPLES } from '../consts';
+import PreviewTable, { type PreviewData } from '../PreviewTable';
+import { ADDR_EXAMPLES } from '../../consts';
 
 type UploadStepProps = {
     fileName: string | null;

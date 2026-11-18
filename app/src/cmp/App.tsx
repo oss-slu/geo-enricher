@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { TABLE_IDS, URLS } from '../consts';
 import MenuBar from './MenuBar';
-import GeocodeStep from './GeocodeStep';
+import GeocodeStep from './ux/GeocodeStep';
 import { useEnrichFlow } from '../hooks/useEnrichFlow';
-import UploadStep from './UploadStep';
-import EnrichStep from './EnrichStep';
+import UploadStep from './ux/UploadStep';
+import EnrichStep from './ux/EnrichStep';
 import type { SelectedAcsColumn } from '../api/files';
-import AcsStep from './AcsStep';
+import AcsStep from './ux/AcsStep';
 
 export default function App() {
     const [selectedAcsColumns, setSelectedAcsColumns] = useState<SelectedAcsColumn[]>([]);
