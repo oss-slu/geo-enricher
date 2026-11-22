@@ -1,9 +1,9 @@
+
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
-import { MMDDYY_HHMMSS } from '../utils/datetime';
 import { saveSessionFile, deleteSessionDir } from '../utils/storage';
 import { FileError } from '../errs/file';
 
@@ -52,8 +52,10 @@ router.post(
 
         try {
             const sessionId = crypto.randomUUID();
-            const ext = path.extname(req.file.originalname) || '.csv';
-            const filename = `data_${MMDDYY_HHMMSS(new Date())}${ext}`;
+
+            const filename = path.basename(
+                req.file.originalname.replace(/\\/g, '/'),
+            ).replace(/\s+/g, '_');
 
             const outputPath = await saveSessionFile(
                 sessionId,
@@ -79,6 +81,7 @@ router.delete('/:sessionId', fileOpLimiter, async (req, res) => {
 
     const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
     if (!uuidRegex.test(sessionId)) {
         return res.status(400).json({ error: 'Invalid session ID format' });
     }
@@ -87,10 +90,12 @@ router.delete('/:sessionId', fileOpLimiter, async (req, res) => {
         await deleteSessionDir(sessionId);
         res.json({ success: true });
     } catch (err) {
-        if (err instanceof FileError)
+        if (err instanceof FileError) {
             return res
                 .status(err.status)
                 .json({ success: false, code: err.code, error: err.message });
+        }
+
         console.error('Cleanup error:', err);
         res.status(500).json({ error: 'Failed to clean up directory' });
     }

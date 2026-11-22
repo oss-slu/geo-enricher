@@ -1,5 +1,7 @@
+
 import { FileError } from '../errs/file';
 import { withSession } from '../utils/storage';
+import { MMDDYY_HHMMSS } from '../utils/datetime';
 import {
     saveDataset,
     type Cell,
@@ -8,8 +10,11 @@ import {
 import { parseEnrichOptions } from './enrichDataset';
 import { FILE_LIMITS } from '../utils/fileLimits';
 import {
-    baseName, indexSidecar, readSidecar,
-    uniqueColumn, withDeadline
+    baseName,
+    indexSidecar,
+    readSidecar,
+    uniqueColumn,
+    withDeadline,
 } from '../utils/fileHelpers';
 import { loadDataset, parseFileOptions } from './shared';
 
@@ -57,7 +62,10 @@ export async function enrichFile(
             };
 
             if (options.geo) {
-                if (!options.geocodeFile) throw new FileError(400, 'INVALID_OPTIONS', 'geocodeFile is required when geo is true');
+                if (!options.geocodeFile) {
+                    throw new FileError(400, 'INVALID_OPTIONS', 'geocodeFile is required when geo is true');
+                }
+
                 const sc = indexSidecar(await readSidecar(options.sessionId, options.geocodeFile));
                 const blockIdx = sc.columns.findIndex((c) => c.label === 'blockGeoid');
                 matched = out.map((_, r) => sc.byRow.get(r)?.[blockIdx] != null);
@@ -65,7 +73,10 @@ export async function enrichFile(
             }
 
             if (options.acs) {
-                if (!options.acsFile) throw new FileError(400, 'INVALID_OPTIONS', 'acsFile is required when acs is true');
+                if (!options.acsFile) {
+                    throw new FileError(400, 'INVALID_OPTIONS', 'acsFile is required when acs is true');
+                }
+
                 const sc = indexSidecar(await readSidecar(options.sessionId, options.acsFile));
                 merge(sc, null, '', added.acs);
             }
@@ -73,6 +84,7 @@ export async function enrichFile(
             if (columns.length > FILE_LIMITS.columns) {
                 throw new FileError(413, 'TABLE_TOO_LARGE', 'Enriched dataset exceeds column limit');
             }
+
             check();
 
             // Inner join drops rows the geocoder couldn't match.
@@ -81,13 +93,18 @@ export async function enrichFile(
                     ? out.filter((_, r) => matched![r])
                     : out;
 
+            const originalName = baseName(inputPath).replace(/\s+/g, '_');
+            const outputName = (options.outputName?.trim() || originalName)
+                .replace(/\s+/g, '_');
+
+            const filename = `${outputName}_enriched_${MMDDYY_HHMMSS(new Date())}.${type}`;
+
             const saved = await saveDataset(
                 options.sessionId,
-                `enriched_${baseName(inputPath)}.${type}`,
+                filename,
                 { columns, rows },
                 type,
                 sig,
-                {overwrite: true},
             );
 
             return {

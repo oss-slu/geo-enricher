@@ -99,6 +99,7 @@ export const runEnrich = (
         acsFile?: string;
         fields?: string[];
         join?: 'left' | 'inner';
+	outputName?: string;
     },
 ) => postJson<EnrichResult>('/files/enrich', { sessionId: u.sessionId, path: u.tempPath, ...opts });
 
