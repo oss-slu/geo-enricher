@@ -99,6 +99,7 @@ const handleQueryACS: RequestHandler = async (req, res) => {
     }
 
     const normalizedGeoid = `15000US${geoidMatch[1]}`;
+    const tractGeoid = `14000US${geoidMatch[1].slice(0, 11)}`;
 
     const tables = parseIds(body.tables);
     const columns = parseIds(body.columns);
@@ -142,18 +143,30 @@ const handleQueryACS: RequestHandler = async (req, res) => {
             });
         }
 
+        const params: string[] = [];
+        const getGeoidParam = (table: string): string => {
+            const targetGeoid = table.startsWith('s') ? tractGeoid : normalizedGeoid;
+            const existingIndex = params.indexOf(targetGeoid);
+            if (existingIndex !== -1) return `$${existingIndex + 1}`;
+            params.push(targetGeoid);
+            return `$${params.length}`;
+        };
+
         const selections = [
             `${quoteIdentifier('t0')}.${quoteIdentifier('geoid')} as ${quoteIdentifier('geoid')}`,
         ];
 
+        let firstTableParam = '';
+
         const from = tables.map((tableId, index) => {
             const table = tableId.toLowerCase();
             const alias = `t${index}`;
+            const geoidParam = getGeoidParam(table);
 
             for (const columnId of columns) {
                 const column = columnId.toLowerCase();
 
-                if(
+                if (
                     select.some(
                         (row) =>
                             row.table_id === table &&
@@ -168,19 +181,22 @@ const handleQueryACS: RequestHandler = async (req, res) => {
 
             const tableRef =
                 `${quoteIdentifier('acs')}.${quoteIdentifier(table)} as ${quoteIdentifier(alias)}`;
-            
-                if (index == 0) return tableRef;
-                return `join ${tableRef} on ${quoteIdentifier('t0')}.${quoteIdentifier('geoid')} = ${quoteIdentifier(alias)}.${quoteIdentifier('geoid')}`;
+
+            if (index === 0) {
+                firstTableParam = geoidParam;
+                return tableRef;
+            }
+
+            return `join ${tableRef} on ${quoteIdentifier(alias)}.${quoteIdentifier('geoid')} = ${geoidParam}`;
         });
 
         const result = await query(
             `select ${selections.join(', ')}
             from ${from.join('\n')}
-            where ${quoteIdentifier('t0')}.${quoteIdentifier('geoid')} = $1
+            where ${quoteIdentifier('t0')}.${quoteIdentifier('geoid')} = ${firstTableParam}
             `,
-            [normalizedGeoid],
+            params,
         );
-
         if (!result.rows.length) {
             return res.status(404).json({
                 ok: false,

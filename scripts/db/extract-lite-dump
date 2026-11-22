@@ -34,6 +34,13 @@ readonly KEEP_TABLES=(
     b25061
     b25075
     b25024
+    s0701
+    s0801
+    s1701
+    s1901
+    s2503
+    s2701
+    s2703
 )
 
 # Full metadata tables retained. census_*_metadata are row-filtered to the kept
