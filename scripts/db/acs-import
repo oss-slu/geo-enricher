@@ -6,6 +6,7 @@ readonly DUMP_URL='https://backup.censusreporter.org/census-reporter-extracts/ac
 readonly SOURCE_SCHEMA='acs2024_5yr'
 readonly TARGET_SCHEMA='acs'
 readonly SETUP_SQL='/docker-entrypoint-initdb.d/010-setup.sql'
+readonly LOCAL_DUMP='/dump/acs2024_5yr_backup.sql.gz'
 
 : "${POSTGRES_USER:?POSTGRES_USER must be set}"
 : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}"
@@ -62,13 +63,13 @@ SQL
 echo "Preparing the ${SOURCE_SCHEMA} staging schema..."
 run_as_database_owner --command="DROP SCHEMA IF EXISTS ${SOURCE_SCHEMA} CASCADE;"
 
-echo "Downloading and restoring ${DUMP_URL}..."
-# The dump assigns objects to its original `postgres` role. Dropping those
-# ownership statements keeps the objects owned by the configured database owner
-# and allows POSTGRES_USER to be customized.
+echo "Downloading ${DUMP_URL} using wget with robust resume support..."
+mkdir -p /dump
+wget --continue --tries=50 --timeout=60 --waitretry=10 --secure-protocol=TLSv1_2 -O "${LOCAL_DUMP}" "${DUMP_URL}"
+
+echo "Restoring database from local dump file..."
 restore_status=0
-curl --fail --location --retry 3 --show-error --silent "${DUMP_URL}" \
-    | gzip -dc \
+gzip -dc "${LOCAL_DUMP}" \
     | sed '/ OWNER TO postgres;$/d' \
     | PGPASSWORD="${POSTGRES_PASSWORD}" psql \
         --no-psqlrc \
@@ -76,9 +77,6 @@ curl --fail --location --retry 3 --show-error --silent "${DUMP_URL}" \
         --username="${POSTGRES_USER}" \
         --dbname="${PGDATABASE}" || restore_status=$?
 
-# Apply grants even when the dump fails after creating some tables. Without
-# this, `set -e` exits before the application role is authorized, leaving a
-# populated staging schema that only the database owner can query.
 apply_database_setup
 
 if ((restore_status != 0)); then
@@ -88,10 +86,8 @@ fi
 
 run_as_database_owner <<'SQL'
 BEGIN;
-
 DROP SCHEMA IF EXISTS acs CASCADE;
 ALTER SCHEMA acs2024_5yr RENAME TO acs;
-
 COMMIT;
 SQL
 

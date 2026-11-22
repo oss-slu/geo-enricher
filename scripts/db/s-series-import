@@ -1,0 +1,186 @@
+#!/usr/bin/env node
+const { Pool } = require('pg');
+
+const CENSUS_YEAR = process.env.CENSUS_YEAR || '2024';
+const CENSUS_API_KEY = process.env.CENSUS_API_KEY;
+const BATCH_SIZE = 45;
+
+const TABLES = [
+    { id: 'S1701', title: 'Poverty Status in the Past 12 Months' },
+    { id: 'S1901', title: 'Income in the Past 12 Months' },
+    { id: 'S0801', title: 'Commuting Characteristics by Sex' },
+    { id: 'S2503', title: 'Financial Characteristics' },
+    { id: 'S2701', title: 'Selected Characteristics of Health Insurance Coverage in the United States' },
+    { id: 'S2703', title: 'Private Health Insurance Coverage by Type and Selected Characteristics' },
+    { id: 'S0701', title: 'Geographic Mobility by Selected Characteristics in the United States' },
+];
+
+const STATE_FIPS = [
+    '01', '02', '04', '05', '06', '08', '09', '10', '11', '12',
+    '13', '15', '16', '17', '18', '19', '20', '21', '22', '23',
+    '24', '25', '26', '27', '28', '29', '30', '31', '32', '33',
+    '34', '35', '36', '37', '38', '39', '40', '41', '42', '44',
+    '45', '46', '47', '48', '49', '50', '51', '53', '54', '55',
+    '56', '72',
+];
+
+const pool = new Pool({
+    user: process.env.POSTGRES_USER || process.env.PGUSER,
+    password: process.env.POSTGRES_PASSWORD || process.env.PGPASSWORD,
+    host: process.env.PGHOST || 'localhost',
+    database: process.env.PGDATABASE,
+    port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
+});
+
+async function fetchJsonWithRetry(url, retries = 3) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const res = await fetch(url);
+            const rawText = await res.text();
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${rawText.slice(0, 200)}`);
+            }
+            return JSON.parse(rawText);
+        } catch (err) {
+            if (attempt === retries) {
+                throw new Error(`Failed after ${retries} attempts (${url}): ${err.message}`);
+            }
+            await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+    }
+}
+
+async function bulkInsertRows(client, lowerTableId, colNames, rowsMap) {
+    const entries = Array.from(rowsMap.entries());
+    if (entries.length === 0) return 0;
+
+    const allCols = ['geoid', ...colNames];
+    const colListSql = allCols.map((c) => `"${c}"`).join(', ');
+    // Stay safely under Postgres's 65,535 bind-parameter limit
+    const maxRowsPerQuery = Math.max(1, Math.floor(50000 / allCols.length));
+
+    for (let i = 0; i < entries.length; i += maxRowsPerQuery) {
+        const chunk = entries.slice(i, i + maxRowsPerQuery);
+        const values = [];
+        const placeholders = chunk.map(([geoid, rowObj], rowIdx) => {
+            const offset = rowIdx * allCols.length;
+            values.push(geoid);
+            for (const col of colNames) {
+                values.push(rowObj[col] ?? null);
+            }
+            const rowPlaceholders = allCols.map((_, colIdx) => `$${offset + colIdx + 1}`).join(', ');
+            return `(${rowPlaceholders})`;
+        });
+
+        await client.query(
+            `INSERT INTO acs."${lowerTableId}" (${colListSql})
+             VALUES ${placeholders.join(', ')}
+             ON CONFLICT (geoid) DO NOTHING`,
+            values
+        );
+    }
+
+    return entries.length;
+}
+
+async function run() {
+    if (!CENSUS_API_KEY) {
+        throw new Error('Missing CENSUS_API_KEY in environment (.env).');
+    }
+
+    const client = await pool.connect();
+    try {
+        console.log(`Fetching ACS ${CENSUS_YEAR} Subject Table metadata...`);
+        const metaUrl = `https://api.census.gov/data/${CENSUS_YEAR}/acs/acs5/subject/variables.json`;
+        const { variables } = await fetchJsonWithRetry(metaUrl);
+        const keyParam = `&key=${encodeURIComponent(CENSUS_API_KEY)}`;
+
+        for (const { id: upperTableId, title: tableTitle } of TABLES) {
+            const lowerTableId = upperTableId.toLowerCase();
+            const prefix = `${upperTableId}_`;
+
+            const tableVars = Object.entries(variables)
+                .filter(([key]) => key.startsWith(prefix) && key.endsWith('E'))
+                .sort(([a], [b]) => a.localeCompare(b));
+
+            const colNames = tableVars.map(([key]) => key.toLowerCase());
+            console.log(`\nProcessing ${upperTableId} (${tableVars.length} variables)...`);
+
+            // 1. Update table & column metadata (UPPERCASE table_id to match B/C tables)
+            await client.query(
+                `DELETE FROM acs.census_table_metadata WHERE LOWER(table_id) = $1`,
+                [lowerTableId]
+            );
+            await client.query(
+                `INSERT INTO acs.census_table_metadata (table_id, table_title)
+                 VALUES ($1, $2)`,
+                [upperTableId, tableTitle]
+            );
+
+            await client.query(
+                `DELETE FROM acs.census_column_metadata WHERE LOWER(table_id) = $1`,
+                [lowerTableId]
+            );
+            for (const [colKey, colMeta] of tableVars) {
+                await client.query(
+                    `INSERT INTO acs.census_column_metadata (table_id, column_id, column_title)
+                     VALUES ($1, $2, $3)`,
+                    [upperTableId, colKey.toLowerCase(), colMeta.label || colKey]
+                );
+            }
+
+            // 2. Create/reset table
+            const columnsSql = colNames.map((c) => `"${c}" TEXT`).join(',\n    ');
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS acs."${lowerTableId}" (
+                    geoid TEXT PRIMARY KEY,
+                    ${columnsSql}
+                );
+                TRUNCATE TABLE acs."${lowerTableId}";
+            `);
+
+            let totalInserted = 0;
+            for (const fips of STATE_FIPS) {
+                const stateRows = new Map();
+
+                for (let i = 0; i < tableVars.length; i += BATCH_SIZE) {
+                    const batch = tableVars.slice(i, i + BATCH_SIZE);
+                    const varKeys = batch.map(([key]) => key).join(',');
+                    const dataUrl = `https://api.census.gov/data/${CENSUS_YEAR}/acs/acs5/subject?get=${varKeys}&for=tract:*&in=state:${fips}${keyParam}`;
+
+                    const rows = await fetchJsonWithRetry(dataUrl);
+                    const [header, ...dataRows] = rows;
+                    const stateIdx = header.indexOf('state');
+                    const countyIdx = header.indexOf('county');
+                    const tractIdx = header.indexOf('tract');
+
+                    for (const row of dataRows) {
+                        const geoid = `14000US${row[stateIdx]}${row[countyIdx]}${row[tractIdx]}`;
+                        if (!stateRows.has(geoid)) {
+                            stateRows.set(geoid, {});
+                        }
+                        const record = stateRows.get(geoid);
+                        for (let j = 0; j < batch.length; j++) {
+                            record[batch[j][0].toLowerCase()] = row[j];
+                        }
+                    }
+                }
+
+                const inserted = await bulkInsertRows(client, lowerTableId, colNames, stateRows);
+                totalInserted += inserted;
+                process.stdout.write(`\r  -> ${upperTableId}: loaded ${totalInserted.toLocaleString()} tracts (state FIPS ${fips})`);
+            }
+            console.log(`\n  -> Finished ${upperTableId}: ${totalInserted.toLocaleString()} total tracts`);
+        }
+
+        console.log('\nAll S-Series tract-level tables imported successfully.');
+    } finally {
+        client.release();
+        await pool.end();
+    }
+}
+
+run().catch((err) => {
+    console.error('\nImport failed:', err);
+    process.exit(1);
+});
