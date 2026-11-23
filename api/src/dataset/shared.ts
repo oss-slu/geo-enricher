@@ -15,6 +15,7 @@ import {
 
 export type FileOptions = ReadOptions & {
     sessionId: string;
+    outputName?: string;
     addressField?: string;
     fields?: unknown;
     join?: unknown;
@@ -49,6 +50,19 @@ export function parseFileOptions(value: unknown): FileOptions {
 
     validateSessionId(body.sessionId as string);
     parseEnrichOptions(body);
+
+    if (body.outputName !== undefined) {
+        if (
+            typeof body.outputName !== 'string' ||
+            !/^[a-zA-Z0-9][a-zA-Z0-9._ -]{0,99}$/.test(body.outputName.trim())
+        ) {
+            throw new FileError(
+                400,
+                'INVALID_OPTIONS',
+                'outputName must be a valid filename without a path or extension',
+            );
+        }
+    }
 
     if (
         body.hasHeaders !== undefined &&
