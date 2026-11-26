@@ -1,3 +1,4 @@
+
 import { jest } from '@jest/globals';
 
 type QueryRow = Record<string, unknown>;
@@ -8,8 +9,11 @@ const query = jest.fn<
 
 jest.unstable_mockModule('../../db/connect', () => ({ query }));
 
-const { normalizeGeoid, queryACSForGeoid } =
-    await import('../../utils/acs');
+const {
+    normalizeGeoid,
+    getAcsColumnMetadata,
+    queryACSForGeoid,
+} = await import('../../utils/acs');
 
 describe('ACS utility', () => {
     beforeEach(() => {
@@ -39,19 +43,128 @@ describe('ACS utility', () => {
         );
     });
 
+    describe('getAcsColumnMetadata', () => {
+        const selections = [
+            { table_id: 'B02001', column_id: 'B02001001' },
+            { table_id: 'b02001', column_id: 'b02001002' },
+        ];
+
+        it('retrieves selected ACS column titles', async () => {
+            query.mockResolvedValueOnce({
+                rows: [
+                    {
+                        table_id: 'b02001',
+                        column_id: 'b02001001',
+                        column_title: 'Total:',
+                    },
+                    {
+                        table_id: 'b02001',
+                        column_id: 'b02001002',
+                        column_title: 'White alone',
+                    },
+                ],
+            });
+
+            const result = await getAcsColumnMetadata(selections);
+
+            expect(result).toEqual([
+                {
+                    table_id: 'b02001',
+                    column_id: 'b02001001',
+                    column_title: 'Total:',
+                },
+                {
+                    table_id: 'b02001',
+                    column_id: 'b02001002',
+                    column_title: 'White alone',
+                },
+            ]);
+
+            expect(query).toHaveBeenCalledTimes(1);
+            expect(query.mock.calls[0][0]).toContain('column_title');
+        });
+
+        it('matches metadata without regard to ID casing', async () => {
+            query.mockResolvedValueOnce({
+                rows: [
+                    {
+                        table_id: 'b02001',
+                        column_id: 'b02001001',
+                        column_title: 'Total:',
+                    },
+                ],
+            });
+
+            const result = await getAcsColumnMetadata([
+                { table_id: 'B02001', column_id: 'B02001001' },
+            ]);
+
+            expect(result[0].column_title).toBe('Total:');
+        });
+
+        it('rejects selections that do not exist in metadata', async () => {
+            query.mockResolvedValueOnce({ rows: [] });
+
+            await expect(
+                getAcsColumnMetadata([
+                    { table_id: 'B02001', column_id: 'B02001999' },
+                ]),
+            ).rejects.toMatchObject({
+                code: 'INVALID_ACS_COLUMNS',
+            });
+        });
+
+        it('rejects metadata without a column title', async () => {
+            query.mockResolvedValueOnce({
+                rows: [
+                    {
+                        table_id: 'b02001',
+                        column_id: 'b02001001',
+                        column_title: '   ',
+                    },
+                ],
+            });
+
+            await expect(
+                getAcsColumnMetadata([
+                    { table_id: 'B02001', column_id: 'B02001001' },
+                ]),
+            ).rejects.toMatchObject({
+                code: 'INVALID_ACS_COLUMNS',
+            });
+        });
+
+        it('does not query the database for empty selections', async () => {
+            const result = await getAcsColumnMetadata([]);
+
+            expect(result).toEqual([]);
+            expect(query).not.toHaveBeenCalled();
+        });
+    });
+
     describe('queryACSForGeoid', () => {
         const selections = [
             { table_id: 'B02001', column_id: 'B02001001' },
             { table_id: 'B02001', column_id: 'B02001002' },
         ];
 
+        const metadata = [
+            {
+                table_id: 'b02001',
+                column_id: 'b02001001',
+                column_title: 'Total:',
+            },
+            {
+                table_id: 'b02001',
+                column_id: 'b02001002',
+                column_title: 'White alone',
+            },
+        ];
+
         it('queries selected ACS columns for a GEOID', async () => {
             query
                 .mockResolvedValueOnce({
-                    rows: [
-                        { table_id: 'b02001', column_id: 'b02001001' },
-                        { table_id: 'b02001', column_id: 'b02001002' },
-                    ],
+                    rows: metadata,
                 })
                 .mockResolvedValueOnce({
                     rows: [{
@@ -78,10 +191,37 @@ describe('ACS utility', () => {
             ]);
         });
 
+        it('uses supplied validated metadata without another metadata query', async () => {
+            query.mockResolvedValueOnce({
+                rows: [{
+                    geoid: '15000US290000000000',
+                    b02001_b02001001: 100,
+                    b02001_b02001002: 75,
+                }],
+            });
+
+            const result = await queryACSForGeoid(
+                '290000000000',
+                selections,
+                metadata,
+            );
+
+            expect(result).toMatchObject({
+                b02001_b02001001: 100,
+                b02001_b02001002: 75,
+            });
+
+            expect(query).toHaveBeenCalledTimes(1);
+        });
+
         it('rejects a column that does not belong to the selected table', async () => {
             query.mockResolvedValueOnce({
                 rows: [
-                    { table_id: 'b02001', column_id: 'b02001001' },
+                    {
+                        table_id: 'b02001',
+                        column_id: 'b02001001',
+                        column_title: 'Total:',
+                    },
                 ],
             });
 
@@ -99,9 +239,7 @@ describe('ACS utility', () => {
         it('returns null when no ACS record exists', async () => {
             query
                 .mockResolvedValueOnce({
-                    rows: [
-                        { table_id: 'b02001', column_id: 'b02001001' },
-                    ],
+                    rows: metadata,
                 })
                 .mockResolvedValueOnce({ rows: [] });
 

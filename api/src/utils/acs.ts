@@ -6,9 +6,10 @@ export type SelectedAcsColumn = {
     column_id: string;
 };
 
-type MetadataRow = {
+export type AcsColumnMetadata = {
     table_id: string;
     column_id: string;
+    column_title: string;
 };
 
 function quoteIdentifier(identifier: string): string {
@@ -17,12 +18,12 @@ function quoteIdentifier(identifier: string): string {
 
 export function normalizeGeoid(value: unknown): string {
     if (typeof value !== 'string') {
-    throw new FileError(
-        400,
-        'INVALID_GEOID',
-        'GEOID must be a 12-digit block-group GEOID',
-    );
-}
+        throw new FileError(
+            400,
+            'INVALID_GEOID',
+            'GEOID must be a 12-digit block-group GEOID',
+        );
+    }
 
     const match = /^(?:15000US)?(\d{12})$/iu.exec(value.trim());
 
@@ -37,16 +38,16 @@ export function normalizeGeoid(value: unknown): string {
     return `15000US${match[1]}`;
 }
 
-export async function queryACSForGeoid(
-    geoid: string,
+export async function getAcsColumnMetadata(
     selections: SelectedAcsColumn[],
-): Promise<Record<string, unknown> | null> {
-    const normalizedGeoid = normalizeGeoid(geoid);
+): Promise<AcsColumnMetadata[]> {
+    if (!selections.length) return [];
 
-    if (!selections.length) return {};
-
-    const metadata = await query<MetadataRow>(
-        `SELECT lower(table_id) AS table_id, lower(column_id) AS column_id
+    const metadata = await query<AcsColumnMetadata>(
+        `SELECT
+            lower(table_id) AS table_id,
+            lower(column_id) AS column_id,
+            column_title
          FROM acs.census_column_metadata
          WHERE (lower(table_id), lower(column_id)) IN (
              SELECT lower(selection.table_id), lower(selection.column_id)
@@ -59,21 +60,61 @@ export async function queryACSForGeoid(
         ],
     );
 
-    const validPairs = new Set(
-        metadata.rows.map((row) => `${row.table_id}:${row.column_id}`),
+    const metadataByKey = new Map(
+        metadata.rows.map((row) => [
+            `${row.table_id}:${row.column_id}`,
+            row,
+        ]),
     );
 
-    for (const selection of selections) {
+    return selections.map((selection) => {
         const key =
             `${selection.table_id.toLowerCase()}:${selection.column_id.toLowerCase()}`;
 
-        if (!validPairs.has(key)) {
+        const row = metadataByKey.get(key);
+
+        if (!row || !row.column_title?.trim()) {
             throw new FileError(
                 400,
                 'INVALID_ACS_COLUMNS',
-                `Invalid ACS table-column selection: ${selection.table_id}.${selection.column_id}`,
+                `Invalid ACS table-column selection or missing column title: ${selection.table_id}.${selection.column_id}`,
             );
         }
+
+        return row;
+    });
+}
+
+export async function queryACSForGeoid(
+    geoid: string,
+    selections: SelectedAcsColumn[],
+    validatedMetadata?: AcsColumnMetadata[],
+): Promise<Record<string, unknown> | null> {
+    const normalizedGeoid = normalizeGeoid(geoid);
+
+    if (!selections.length) return {};
+
+    if (validatedMetadata) {
+        const validPairs = new Set(
+            validatedMetadata.map(
+                (row) => `${row.table_id}:${row.column_id}`,
+            ),
+        );
+
+        for (const selection of selections) {
+            const key =
+                `${selection.table_id.toLowerCase()}:${selection.column_id.toLowerCase()}`;
+
+            if (!validPairs.has(key)) {
+                throw new FileError(
+                    400,
+                    'INVALID_ACS_COLUMNS',
+                    `Invalid ACS table-column selection: ${selection.table_id}.${selection.column_id}`,
+                );
+            }
+        }
+    } else {
+        await getAcsColumnMetadata(selections);
     }
 
     const tables = [...new Set(

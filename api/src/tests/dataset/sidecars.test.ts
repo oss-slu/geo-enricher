@@ -4,18 +4,30 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { geocodeBlockResult } from '../../types/census';
-import type { SelectedAcsColumn } from '../../utils/acs';
+import type {
+    SelectedAcsColumn,
+    AcsColumnMetadata,
+} from '../../utils/acs';
 import type { Geocoder } from '../../dataset/enrichDataset';
 import { readDataset, saveDataset, type Dataset } from '../../dataset/dataset';
+const getAcsColumnMetadata =
+    jest.fn<
+        (selections: SelectedAcsColumn[]) => Promise<AcsColumnMetadata[]>
+    >();
 
 const queryACSForGeoid =
     jest.fn<
         (
             geoid: string,
             selections: SelectedAcsColumn[],
+            metadata?: AcsColumnMetadata[],
         ) => Promise<Record<string, unknown> | null>
     >();
-jest.unstable_mockModule('../../utils/acs', () => ({ queryACSForGeoid }));
+
+jest.unstable_mockModule('../../utils/acs', () => ({
+    getAcsColumnMetadata,
+    queryACSForGeoid,
+}));
 const { geoSidecar, acsSidecar } = await import('../../dataset/sidecars');
 
 const addr = '123 Main St, Saint Louis, MO 63103';
@@ -46,6 +58,13 @@ const table: Dataset = {
 const acsColumns: SelectedAcsColumn[] = [
     { table_id: 'B01001', column_id: 'B01001001' },
 ];
+const acsMetadata: AcsColumnMetadata[] = [
+    {
+        table_id: 'b01001',
+        column_id: 'b01001001',
+        column_title: 'Total:',
+    },
+];
 const geocoder = jest.fn<Geocoder>(async (address) =>
     address === addr ? result : null,
 );
@@ -68,11 +87,15 @@ beforeEach(async () => {
         table,
         'csv',
     ));
+    getAcsColumnMetadata.mockReset();
+    queryACSForGeoid.mockReset();
+
+    getAcsColumnMetadata.mockResolvedValue(acsMetadata);
+
     queryACSForGeoid.mockImplementation(async (g) =>
         g === geoid ? { b01001_b01001001: 1234 } : null,
     );
 });
-
 afterEach(async () => {
     if (previousRoot === undefined) delete process.env.UPLOAD_TEMP_DIR;
     else process.env.UPLOAD_TEMP_DIR = previousRoot;
@@ -206,14 +229,18 @@ describe('acsSidecar', () => {
 
         expect(res.filename).toBe('acs_input.csv');
         expect(queryACSForGeoid).toHaveBeenCalledTimes(1);
-        expect(queryACSForGeoid).toHaveBeenCalledWith(geoid, acsColumns);
+        expect(queryACSForGeoid).toHaveBeenCalledWith(
+            geoid,
+            acsColumns,
+            acsMetadata,
+        );
         expect(res.counts).toEqual({ input: 4, uniqueGeoids: 1, withAcs: 2 });
 
         const sidecar = await readOutput(res.tempPath);
         expect(sidecar.columns.map((c) => c.label)).toEqual([
             '_row',
             '_address',
-            'B01001 B01001001',
+            'B01001_Total',
         ]);
         expect(sidecar.rows).toEqual([
             ['0', addr, '1234'],
@@ -225,7 +252,7 @@ describe('acsSidecar', () => {
         // Preview omits the _row column.
         expect(res.preview.columns.map((c) => c.label)).toEqual([
             '_address',
-            'B01001 B01001001',
+            'B01001_Total',
         ]);
         expect(res.preview.rows[0]).toEqual([addr, 1234]);
     });

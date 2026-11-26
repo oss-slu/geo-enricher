@@ -1,12 +1,22 @@
 import { FileError } from '../errs/file';
 import { FILE_LIMITS } from '../utils/fileLimits';
-import { queryACSForGeoid } from '../utils/acs';
+import {
+    getAcsColumnMetadata,
+    queryACSForGeoid,
+} from '../utils/acs';
+import type { SelectedAcsColumn } from '../utils/acs';
 import { resolveColumn } from '../utils/fileHelpers';
 import type { Dataset, Cell, Column } from './dataset';
-import type { SelectedAcsColumn } from '../utils/acs';
 
 const acsKey = (s: SelectedAcsColumn) =>
     `${s.table_id.toLowerCase()}_${s.column_id.toLowerCase()}`;
+
+function formatColumnTitle(title: string): string {
+    return title
+        .trim()
+        .replace(/:\s*$/u, '')
+        .replace(/\s+/gu, '_');
+}
 
 function isCell(v: unknown): v is Cell {
     return (
@@ -33,6 +43,18 @@ export async function appendAcs(
     );
     const geoidIndex = dataset.columns.findIndex((c) => c.id === geoidId);
 
+    // Retrieve and validate the selected ACS column metadata once.
+    check();
+    const metadata = await getAcsColumnMetadata(acsColumns);
+    check();
+
+    const metadataByKey = new Map(
+        metadata.map((item) => [
+            `${item.table_id}:${item.column_id}`,
+            item,
+        ]),
+    );
+
     // Query each unique GEOID once, with bounded concurrency.
     const geoids = [
         ...new Set(
@@ -49,7 +71,10 @@ export async function appendAcs(
         while (cursor < geoids.length) {
             check();
             const geoid = geoids[cursor++];
-            results.set(geoid, await queryACSForGeoid(geoid, acsColumns));
+            results.set(
+                geoid,
+                await queryACSForGeoid(geoid, acsColumns, metadata),
+            );
         }
     };
 
@@ -58,10 +83,24 @@ export async function appendAcs(
     );
     check();
 
-    const newColumns: Column[] = acsColumns.map((s) => ({
-        id: `acs_${acsKey(s)}`,
-        label: `${s.table_id.toUpperCase()} ${s.column_id.toUpperCase()}`,
-    }));
+    const newColumns: Column[] = acsColumns.map((selection) => {
+        const key =
+            `${selection.table_id.toLowerCase()}:${selection.column_id.toLowerCase()}`;
+        const columnMetadata = metadataByKey.get(key);
+
+        if (!columnMetadata) {
+            throw new FileError(
+                400,
+                'INVALID_ACS_COLUMNS',
+                `Missing ACS metadata for ${selection.table_id}.${selection.column_id}`,
+            );
+        }
+
+        return {
+            id: `acs_${acsKey(selection)}`,
+            label: `${selection.table_id.toUpperCase()}_${formatColumnTitle(columnMetadata.column_title)}`,
+        };
+    });
 
     const rows = dataset.rows.map((row) => {
         const geoid = row[geoidIndex];
@@ -69,8 +108,8 @@ export async function appendAcs(
 
         return [
             ...row,
-            ...acsColumns.map((s) => {
-                const v = acsRow?.[acsKey(s)];
+            ...acsColumns.map((selection) => {
+                const v = acsRow?.[acsKey(selection)];
                 return isCell(v) ? v : null;
             }),
         ];
