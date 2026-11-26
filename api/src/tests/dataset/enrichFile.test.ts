@@ -5,7 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { geocodeBlockResult } from '../../types/census';
-import type { SelectedAcsColumn } from '../../utils/acs';
+import type {
+    AcsColumnMetadata,
+    SelectedAcsColumn,
+} from '../../utils/acs';
 import type { Geocoder } from '../../dataset/enrichDataset';
 import {
     readDataset,
@@ -15,15 +18,31 @@ import {
 } from '../../dataset/dataset';
 import { FILE_LIMITS } from '../../utils/fileLimits';
 
+const acsMetadata: AcsColumnMetadata[] = [
+    {
+        table_id: 'b01001',
+        column_id: 'b01001001',
+        column_title: 'Total:',
+    },
+];
+const getAcsColumnMetadata =
+    jest.fn<
+        (selections: SelectedAcsColumn[]) => Promise<AcsColumnMetadata[]>
+    >();
+
 const queryACSForGeoid =
     jest.fn<
         (
             geoid: string,
             selections: SelectedAcsColumn[],
+            validatedMetadata?: AcsColumnMetadata[],
         ) => Promise<Record<string, unknown> | null>
     >();
 
-jest.unstable_mockModule('../../utils/acs', () => ({ queryACSForGeoid }));
+jest.unstable_mockModule('../../utils/acs', () => ({
+    getAcsColumnMetadata,
+    queryACSForGeoid,
+}));
 
 const { geoSidecar, acsSidecar } = await import('../../dataset/sidecars');
 const { enrichFile } = await import('../../dataset/enrichFile');
@@ -75,7 +94,7 @@ beforeEach(async () => {
 
     process.env.UPLOAD_TEMP_DIR = root;
     sessionId = randomUUID();
-
+    getAcsColumnMetadata.mockResolvedValue(acsMetadata);
     queryACSForGeoid.mockImplementation(async (g) =>
         g === geoid ? { b01001_b01001001: 1234 } : null,
     );
@@ -147,7 +166,7 @@ it.each(['csv', 'xls', 'xlsx'] as const)(
                 'tract',
                 'blkgrp',
             ],
-            acs: ['B01001 B01001001'],
+            acs: ['B01001_Total'],
         });
 
         const output = readDataset(await fs.readFile(res.tempPath), type);
@@ -253,7 +272,7 @@ it('merges ACS data alone', async () => {
 
     expect(res.added).toEqual({
         geocode: [],
-        acs: ['B01001 B01001001'],
+        acs: ['B01001_Total'],
     });
 
     const output = readDataset(await fs.readFile(res.tempPath), 'csv');
